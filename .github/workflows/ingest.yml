@@ -1,0 +1,64 @@
+name: Ingest SEC data
+
+# Downloads filings data from SEC EDGAR (free, but requires a declared contact),
+# builds the facts database, regenerates the evaluation questions and commits them.
+#
+# One-time setup: add a repository VARIABLE named SEC_CONTACT with your email
+# (Settings > Secrets and variables > Actions > Variables).
+
+on:
+  workflow_dispatch:
+    inputs:
+      tickers:
+        description: "Space-separated tickers (leave empty for the default list)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    env:
+      SEC_USER_AGENT: edgar-analyst ${{ vars.SEC_CONTACT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check contact variable
+        run: |
+          if [ -z "${{ vars.SEC_CONTACT }}" ]; then
+            echo "::error::Set the SEC_CONTACT repository variable to your email address."
+            exit 1
+          fi
+      - run: pip install -e .
+      - name: Download company facts
+        run: |
+          if [ -n "${{ inputs.tickers }}" ]; then
+            python -m edgar_analyst ingest --tickers ${{ inputs.tickers }}
+          else
+            python -m edgar_analyst ingest
+          fi
+        env:
+          PYTHONPATH: src
+      - name: Build facts database
+        run: python -m edgar_analyst build-db
+        env:
+          PYTHONPATH: src
+      - name: Generate evaluation questions
+        run: python -m edgar_analyst gen-questions
+        env:
+          PYTHONPATH: src
+      - uses: actions/upload-artifact@v4
+        with:
+          name: facts-db
+          path: data/facts.db
+          retention-days: 30
+      - name: Commit questions
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add evals/questions.jsonl
+          git diff --cached --quiet || (git commit -m "Regenerate evaluation questions" && git push)

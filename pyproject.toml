@@ -1,0 +1,16 @@
+[project]
+name = "edgar-analyst"
+version = "0.1.0"
+description = "A research agent for public company filings, with an automatically graded evaluation suite."
+requires-python = ">=3.11"
+dependencies = ["requests>=2.31"]
+
+[project.optional-dependencies]
+dev = ["ruff>=0.5"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
