@@ -1,0 +1,1 @@
+{"message": {"content": "Meta Platforms reported operating income of approximately\u202f$23.2\u202fbillion on revenue of about\u202f$116.6\u202fbillion for fiscal year\u202f2022, resulting in an operating margin of roughly\u202f19.9\u202f%.\n\nFINAL ANSWER: 19.9%", "role": "assistant"}, "model": "openai/gpt-oss-120b", "usage": {"completion_tokens": 132, "prompt_tokens": 175}}

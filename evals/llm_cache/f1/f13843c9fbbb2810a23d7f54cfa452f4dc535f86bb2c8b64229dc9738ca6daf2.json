@@ -1,0 +1,1 @@
+{"message": {"content": "The net income fell by **\u201126.6\u202f%**.\n\nFINAL ANSWER: -26.6%", "role": "assistant"}, "model": "openai/gpt-oss-120b", "usage": {"completion_tokens": 125, "prompt_tokens": 185}}

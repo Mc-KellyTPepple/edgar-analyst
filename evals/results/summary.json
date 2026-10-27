@@ -1,0 +1,22 @@
+{
+  "closed_book": {
+    "accuracy_answerable": 17.3,
+    "accuracy_by_tier": {
+      "1": 10.0,
+      "2": 8.3,
+      "3": 40.0
+    },
+    "citation_recall": 0.0,
+    "correct_refusal_rate": 71.4,
+    "errors": 0,
+    "false_refusal_rate": 37.3,
+    "mean_llm_calls": 1.0,
+    "mean_tokens": 267,
+    "mean_tool_calls": 0.0,
+    "models": [
+      "openai/gpt-oss-120b"
+    ],
+    "p95_seconds": 1.49,
+    "questions": 164
+  }
+}

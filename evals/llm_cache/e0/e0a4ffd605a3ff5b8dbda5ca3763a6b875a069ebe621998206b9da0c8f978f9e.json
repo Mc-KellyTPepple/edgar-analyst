@@ -1,0 +1,1 @@
+{"message": {"content": "The research and development expense increased by **4.0%**.\n\nFINAL ANSWER: 4.0%", "role": "assistant"}, "model": "openai/gpt-oss-120b", "usage": {"completion_tokens": 121, "prompt_tokens": 188}}

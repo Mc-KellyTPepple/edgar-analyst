@@ -1,0 +1,1 @@
+{"message": {"content": "Amazon reported a net loss for 2023, resulting in a negative net profit margin of approximately **\u20110.5%**.\n\nFINAL ANSWER: -0.5%", "role": "assistant"}, "model": "openai/gpt-oss-120b", "usage": {"completion_tokens": 118, "prompt_tokens": 174}}
