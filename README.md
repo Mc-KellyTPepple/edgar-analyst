@@ -3,9 +3,10 @@
 A research agent that answers questions about public company filings (SEC 10-Ks),
 **and an evaluation suite that grades its answers automatically**.
 
-> **Status: week 1 of 6.** Data pipeline, facts database and the evaluation
-> question generator are built and tested. The agent, the results and the
-> deployment are still to come, and no accuracy numbers are claimed yet.
+> **Status: week 1 of 6.** The data pipeline has run on live SEC data for 10 companies,
+> producing 164 evaluation questions (`evals/questions.jsonl`). Eight generated answers
+> were spot-checked against the companies' reported figures and all matched. The agent,
+> the results and the deployment are still to come, and no accuracy numbers are claimed yet.
 
 ## The idea
 
@@ -38,6 +39,9 @@ choices by ticker or company name, and refusals on unanswerable questions.
 - `questions.py` and `grading.py`: the evaluation set and its grader.
 - 30 unit tests on synthetic, SEC-shaped data (including attempted SQL writes and runaway queries).
 
+Known gaps: the corpus is 10 companies for now, and companies that don't tag R&D expense the
+standard way (for example Amazon) have no R&D-based questions.
+
 ## Run it
 
 ```bash
@@ -51,7 +55,7 @@ repository variable to your email first).
 
 ## Roadmap
 
-- [x] Week 1: data pipeline, facts DB, question generator and grader
+- [x] Week 1: data pipeline (verified on live SEC data), facts DB, question generator and grader
 - [ ] Week 1-2: filing text sections and hybrid retrieval (vector plus keyword, reranking)
 - [ ] Week 2: agent with three tools (text search, read-only SQL over facts, calculator)
 - [ ] Week 3: full evaluation runs: plain RAG vs RAG plus tools vs full agent; quality gate in CI
