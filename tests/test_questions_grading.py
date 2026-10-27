@@ -74,7 +74,7 @@ class GenerateTests(unittest.TestCase):
         self.assertEqual(types, {"abstain_future", "abstain_outside_corpus"})
 
     def test_write_jsonl_roundtrip(self):
-        path = Path(self.tmp.name) / "q.jsonl"
+        path = Path(self.tmp.name) / "missing_dir" / "q.jsonl"  # parent folder is created on demand
         write_jsonl(self.qs, path)
         loaded = [json.loads(line) for line in path.read_text().splitlines()]
         self.assertEqual(loaded, json.loads(json.dumps(self.qs)))

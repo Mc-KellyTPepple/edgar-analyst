@@ -258,6 +258,9 @@ def generate(conn: sqlite3.Connection, seed: int = 7, n_t1: int = 50, n_t2: int 
 
 
 def write_jsonl(questions: list[dict], path) -> None:
+    from pathlib import Path
+
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8") as fh:
         for q in questions:
             fh.write(json.dumps(q, sort_keys=True) + "\n")
