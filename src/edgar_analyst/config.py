@@ -8,6 +8,9 @@ ROOT = Path(__file__).resolve().parents[2]
 RAW_DIR = ROOT / "data" / "raw"
 DB_PATH = ROOT / "data" / "facts.db"
 QUESTIONS_PATH = ROOT / "evals" / "questions.jsonl"
+RESULTS_DIR = ROOT / "evals" / "results"
+LLM_CACHE_DIR = ROOT / "evals" / "llm_cache"
+LEDGER_PATH = ROOT / "evals" / "groq_ledger.json"
 
 # Start small (10 companies with comparable R&D-heavy business models) and
 # widen to ~30 once the pipeline is proven.

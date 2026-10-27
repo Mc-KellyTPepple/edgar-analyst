@@ -39,7 +39,7 @@ CREATE TABLE filings(
   primary_doc TEXT
 );
 CREATE VIEW financials AS
-  SELECT c.ticker, c.name, f.metric, f.period_start, f.period_end, f.value, f.accession
+  SELECT c.ticker, c.name, f.metric, f.period_start, f.period_end, f.value, ROUND(f.value / 1e6, 3) AS value_musd, f.accession
   FROM facts f JOIN companies c USING (cik);
 """
 

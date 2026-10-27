@@ -46,6 +46,12 @@ def _pick_number(text: str):
     return nums[-1] if nums else None
 
 
+def cited_accessions(response: str) -> set[str]:
+    """Accession numbers listed on the 'SOURCES:' line."""
+    m = re.findall(r"sources?\s*[:\-]\s*(.+)", response, re.I)
+    return set(re.findall(r"\d{10}-\d{2}-\d{6}", m[-1])) if m else set()
+
+
 def grade(question: dict, response: str) -> dict:
     ans = question["answer"]
     kind = ans["kind"]
@@ -54,10 +60,10 @@ def grade(question: dict, response: str) -> dict:
 
     if kind == "abstain":
         ok = is_abstain(response) and not gave_number
-        return {"correct": ok, "reason": "abstained" if ok else "should have declined to answer"}
+        return {"correct": ok, "abstained": is_abstain(response), "reason": "abstained" if ok else "should have declined to answer"}
 
     if is_abstain(final) and not _numbers(final):
-        return {"correct": False, "reason": "abstained on an answerable question"}
+        return {"correct": False, "abstained": True, "reason": "abstained on an answerable question"}
 
     if kind == "usd_millions":
         picked = _pick_number(final)

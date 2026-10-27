@@ -1,0 +1,78 @@
+name: Evaluate on Groq
+
+# Runs the evaluation questions through Groq's free tier, grades them, and commits the
+# results, the response cache and the daily request ledger back to the repo.
+#
+# Runs are resumable: finished questions are skipped, so when a daily quota runs out the
+# run stops cleanly; dispatch it again the next day to continue.
+#
+# One-time setup:
+#   - repository variable SEC_CONTACT (your email), used to rebuild the facts database
+#   - repository SECRET GROQ_API_KEY (from console.groq.com/keys)
+
+on:
+  workflow_dispatch:
+    inputs:
+      system:
+        description: "Which system to evaluate"
+        type: choice
+        options: [facts_agent, closed_book]
+        default: facts_agent
+      max_requests:
+        description: "Max Groq requests this run (free-tier daily limits apply)"
+        default: "400"
+      tiers:
+        description: "Tiers to run, e.g. 0,1,2,3 (empty = all)"
+        required: false
+        default: ""
+      models:
+        description: "Comma-separated Groq models, preferred first (empty = defaults)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: eval
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    env:
+      SEC_USER_AGENT: edgar-analyst ${{ vars.SEC_CONTACT }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      PYTHONPATH: src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check setup
+        run: |
+          [ -n "${{ vars.SEC_CONTACT }}" ] || { echo "::error::Set the SEC_CONTACT repository variable."; exit 1; }
+          [ -n "$GROQ_API_KEY" ] || { echo "::error::Add the GROQ_API_KEY repository secret."; exit 1; }
+      - run: pip install requests
+      - name: Rebuild facts database
+        run: |
+          python -m edgar_analyst ingest
+          python -m edgar_analyst build-db
+      - name: Run evaluation
+        run: |
+          args="--system ${{ inputs.system }} --max-requests ${{ inputs.max_requests }}"
+          [ -z "${{ inputs.tiers }}" ] || args="$args --tiers ${{ inputs.tiers }}"
+          [ -z "${{ inputs.models }}" ] || args="$args --models ${{ inputs.models }}"
+          python -m edgar_analyst run-eval $args
+      - name: Report
+        if: always()
+        run: python -m edgar_analyst report | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Commit results
+        if: always()
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add evals/results evals/llm_cache evals/groq_ledger.json
+          git diff --cached --quiet || git commit -m "Evaluation results (${{ inputs.system }})"
+          git pull --rebase -X theirs && git push
