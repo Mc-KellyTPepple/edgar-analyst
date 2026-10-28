@@ -37,13 +37,14 @@ jobs:
           python -m edgar_analyst ingest
           python -m edgar_analyst build-db
       - name: Filing text and search index
-        run: python -m edgar_analyst ingest-text --per-company ${{ inputs.per_company }} 2>&1 | tee ingest-text.log
+        # the log is committed so that parser diagnostics are readable without opening the Actions UI
+        run: python -m edgar_analyst ingest-text --per-company ${{ inputs.per_company }} 2>&1 | tee evals/text_ingest.log
       - name: Text questions
-        run: python -m edgar_analyst gen-text-questions | tee -a ingest-text.log
+        run: python -m edgar_analyst gen-text-questions | tee -a evals/text_ingest.log
       - name: Summary
         if: always()
         run: |
-          { echo '### Text index'; echo '```'; cat ingest-text.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          { echo '### Text index'; echo '```'; cat evals/text_ingest.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
           name: text-db
@@ -53,5 +54,5 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
-          git add evals/text_questions.jsonl
+          git add evals/text_questions.jsonl evals/text_ingest.log
           git diff --cached --quiet || (git commit -m "Regenerate text questions" && git pull --rebase -X theirs && git push)
