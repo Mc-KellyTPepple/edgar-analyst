@@ -13,6 +13,7 @@ import ast
 import json
 import operator
 
+from .llm import LLMError
 from .db import QueryError, run_readonly_query
 from .facts import METRICS
 
@@ -90,6 +91,17 @@ def run_tool(name: str, args: dict, conn) -> str:
         return f"error: {exc}"
 
 
+def _chat(llm, messages: list, tools, max_tokens: int) -> dict:
+    """Groq rejects a request outright when the model emits a malformed tool call; one retry with a nudge fixes most."""
+    try:
+        return llm.chat(messages, tools=tools, max_tokens=max_tokens)
+    except LLMError as exc:
+        if "tool_use_failed" not in str(exc):
+            raise
+        nudged = messages + [{"role": "user", "content": "Reply in plain text with FINAL ANSWER and SOURCES lines. Do not call a tool."}]
+        return llm.chat(nudged, tools=None, max_tokens=max_tokens)
+
+
 def run_closed_book(llm, question: str, **_) -> dict:
     resp = llm.chat([{"role": "system", "content": CLOSED_BOOK_SYSTEM}, {"role": "user", "content": question}], max_tokens=400)
     return {"text": resp["message"].get("content") or "", "steps": 1, "tool_calls": 0, "model": resp["model"], "calls": 1,
@@ -102,7 +114,7 @@ def run_facts_agent(llm, question: str, conn, max_steps: int = 6, **_) -> dict:
     model = ""
     for step in range(max_steps):
         last = step == max_steps - 1
-        resp = llm.chat(messages, tools=None if last else TOOLS, max_tokens=600)
+        resp = _chat(llm, messages, None if last else TOOLS, 600)
         calls += 1
         model = resp["model"]
         prompt += resp["usage"]["prompt_tokens"]

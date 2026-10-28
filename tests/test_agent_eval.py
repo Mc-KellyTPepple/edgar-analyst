@@ -91,6 +91,13 @@ class AgentTests(unittest.TestCase):
         r = run_facts_agent(llm, "q?", self.conn)
         self.assertEqual(r["tool_calls"], 1)
 
+    def test_malformed_tool_call_is_retried_with_a_nudge(self):
+        from edgar_analyst.llm import LLMError
+        llm = ScriptedLLM(LLMError('Groq returned 400: {"code": "tool_use_failed"}'), reply("FINAL ANSWER: 3"))
+        r = run_facts_agent(llm, "q?", self.conn)
+        self.assertIn("FINAL ANSWER", r["text"])
+        self.assertIsNone(llm.calls[1]["tools"])
+
     def test_closed_book_has_no_tools(self):
         llm = ScriptedLLM(reply("FINAL ANSWER: 5"))
         r = run_closed_book(llm, "q?")
@@ -136,6 +143,13 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(res["a"]["reason"], "error")
         self.assertIn("boom", res["a"]["error"])
         self.assertTrue(res["b"]["correct"])
+
+    def test_failed_questions_are_retried(self):
+        run_eval(QS[:1], "closed_book", ScriptedLLM(RuntimeError("boom")), None, self.out, progress=lambda *_: None)
+        s = run_eval(QS[:1], "closed_book", ScriptedLLM(reply("FINAL ANSWER: 600")), None, self.out, progress=lambda *_: None)
+        res = load_results(self.out)
+        self.assertEqual((s["attempted"], s["remaining"], res["a"]["correct"]), (1, 0, True))
+        self.assertEqual(len(self.out.read_text().splitlines()), 1)
 
     def test_tier_filter_and_limit(self):
         llm = ScriptedLLM(reply("FINAL ANSWER: 1"))

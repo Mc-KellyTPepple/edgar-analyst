@@ -51,7 +51,7 @@ The model calls use [Groq](https://console.groq.com) and the code is built aroun
 - **Rate limiter**: a sliding 60-second window over requests and tokens per model, at 90% of the limit,
   and `retry-after` is honoured on 429s.
 - **Fallback chain**: when one model's daily quota is gone the next takes over
-  (default `openai/gpt-oss-120b`, then `llama-3.3-70b-versatile`, then `openai/gpt-oss-20b`; override with `--models` or `EDGAR_MODELS`).
+  (default `openai/gpt-oss-120b`, then `openai/gpt-oss-20b`; models the account cannot use are skipped; override with `--models` or `EDGAR_MODELS`).
 - **Cache and replay**: every response is stored under `evals/llm_cache/` keyed by the exact request, so
   re-running costs nothing, and `--mode replay` forbids network calls entirely (deterministic CI).
 - **Daily ledger** (`evals/groq_ledger.json`): request counts per model and day, committed with the results.

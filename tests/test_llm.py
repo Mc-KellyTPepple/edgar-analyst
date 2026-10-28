@@ -182,6 +182,14 @@ class ChatTests(unittest.TestCase):
         self.assertIn("reasoning_effort", net.bodies[0])
         self.assertNotIn("reasoning_effort", net.bodies[1])
 
+    def test_unavailable_model_is_skipped(self):
+        gone = Resp(404, {"error": {"message": "The model `m1` does not exist or you do not have access to it.", "code": "model_not_found"}})
+        net = FakeNet(gone, ok("a"), ok("b"))
+        llm, _ = make(net, models=["m1", "m2"])
+        self.assertEqual(llm.chat(MSG)["model"], "m2")
+        llm.chat([{"role": "user", "content": "x"}])
+        self.assertEqual([b["model"] for b in net.bodies], ["m1", "m2", "m2"])  # m1 not retried
+
     def test_other_client_errors_raise(self):
         llm, _ = make(FakeNet(Resp(401, {"error": {"message": "invalid key"}})))
         with self.assertRaises(LLMError):

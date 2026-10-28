@@ -47,7 +47,7 @@ DEFAULT_LIMITS: dict[str, ModelLimits] = {
     "meta-llama/llama-4-scout-17b-16e-instruct": ModelLimits(30, 30_000, 1_000),
 }
 UNKNOWN_MODEL_LIMITS = ModelLimits(20, 6_000, 500)
-DEFAULT_MODELS = ["openai/gpt-oss-120b", "llama-3.3-70b-versatile", "openai/gpt-oss-20b"]
+DEFAULT_MODELS = ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "llama-3.3-70b-versatile"]
 
 
 class LLMError(RuntimeError):
@@ -64,6 +64,10 @@ class BudgetExhausted(LLMError):
 
 class _DailyLimit(Exception):
     pass
+
+
+class _Unavailable(Exception):
+    """The account cannot use this model (retired, or not enabled for the key)."""
 
 
 @dataclass
@@ -176,6 +180,7 @@ class LLM:
         self.clock, self.sleep = clock, sleep
         self.usage = Usage()
         self._limiters: dict[str, RateLimiter] = {}
+        self._unavailable: set[str] = set()
 
     # ---- helpers -------------------------------------------------------
     def _limits(self, model: str) -> ModelLimits:
@@ -229,7 +234,7 @@ class LLM:
 
         for model in self.models:
             lim = self._limits(model)
-            if self.ledger.exhausted(model) or self.ledger.used(model) >= lim.rpd * self.daily_safety:
+            if model in self._unavailable or self.ledger.exhausted(model) or self.ledger.used(model) >= lim.rpd * self.daily_safety:
                 continue
             if self.max_requests is not None and self.usage.requests >= self.max_requests:
                 raise BudgetExhausted("request budget for this run is used up")
@@ -237,6 +242,9 @@ class LLM:
                 out = self._call(model, requests_by_model[model], messages, tools)
             except _DailyLimit:
                 self.ledger.mark_exhausted(model)
+                continue
+            except _Unavailable:
+                self._unavailable.add(model)
                 continue
             self._write_cache(requests_by_model[model], out)
             return {**out, "cached": False}
@@ -271,6 +279,8 @@ class LLM:
                 self.usage.retries += 1
                 self.sleep(min(_retry_after(resp) or 2 ** attempt, 65))
                 continue
+            if status in (403, 404) and re.search(r"model_not_found|does not exist|model_permission|decommission", text, re.I):
+                raise _Unavailable(text)
             if status == 400 and "reasoning_effort" in text and "reasoning_effort" in body:
                 body.pop("reasoning_effort")
                 continue

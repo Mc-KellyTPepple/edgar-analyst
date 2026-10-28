@@ -28,7 +28,10 @@ def load_results(path: Path) -> dict[str, dict]:
 def run_eval(questions: list[dict], system: str, llm, conn, out_path: Path, tiers=None, limit: int | None = None,
              progress=print) -> dict:
     runner = SYSTEMS[system]
-    done = load_results(out_path)
+    out_path = Path(out_path)
+    done = {k: v for k, v in load_results(out_path).items() if not v.get("error")}
+    if out_path.exists():  # failed attempts are retried, so drop them from the file
+        out_path.write_text("".join(json.dumps(r, sort_keys=True) + "\n" for r in done.values()), encoding="utf-8")
     todo = [q for q in questions if (tiers is None or q["tier"] in tiers) and q["id"] not in done]
     if limit is not None:
         todo = todo[:limit]
@@ -66,7 +69,7 @@ def run_eval(questions: list[dict], system: str, llm, conn, out_path: Path, tier
             fh.flush()
             progress(f"[{i}/{len(todo)}] {q['id']} {'ok' if rec['correct'] else 'wrong'}")
     return {"attempted": len(todo), "stopped": stopped, "remaining": len([q for q in questions if (tiers is None or q["tier"] in tiers)
-                                                                           and q["id"] not in load_results(out_path)])}
+                                                                           and q["id"] not in {k for k, v in load_results(out_path).items() if not v.get("error")}])}
 
 
 def summarize_results(results: list[dict]) -> dict:
