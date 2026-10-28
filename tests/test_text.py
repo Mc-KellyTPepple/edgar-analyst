@@ -46,6 +46,19 @@ class ParseTests(unittest.TestCase):
         self.assertIn("designs widgets", items["1"])
         self.assertGreater(len(items["1"]), 1500)
 
+    def test_running_page_headers_do_not_truncate_sections(self):
+        body = "<p>Item 1. Business</p>" + "".join(f"<p>{FILLER}</p><p>PART I</p><p>Item 1</p>" for _ in range(3))
+        body += "<p>Item 1A. Risk Factors</p>" + f"<p>{FILLER} {FILLER}</p>"
+        items = split_items(html_to_text(f"<html><body>{body}</body></html>"))
+        self.assertGreater(len(items["1"]), 3 * len(FILLER))
+        self.assertNotIn("Risk Factors", items["1"])
+
+    def test_unrecognised_layout_falls_back_to_whole_text(self):
+        html = f"<html><body><p>Our business overview. we had 1,500 employees. {FILLER}</p></body></html>"
+        chunks, sizes = filing_chunks(html, "ZZZ", "0000000009-25-000001", "2024-12-31")
+        self.assertEqual(sizes, {"all": len(html_to_text(html))})
+        self.assertTrue(chunks and all(c["item"] == "all" for c in chunks))
+
     def test_chunking(self):
         text = "\n".join(" ".join(f"w{p}x{i}" for i in range(90)) for p in range(8))
         chunks = chunk_text(text)

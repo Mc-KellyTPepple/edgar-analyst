@@ -67,7 +67,7 @@ def cmd_ingest_text(args) -> None:
             ch, sizes = filing_chunks(html, c["ticker"], f["accession"], f["report_date"])
             chunks += ch
             print(f"{c['ticker']} {f['report_date']}: {len(html) // 1024} KB html, sections {sizes}, {len(ch)} chunks")
-            if set(sizes) < {"1", "1A", "7"}:
+            if not {"1", "1A", "7"} <= set(sizes):
                 problems.append(f"{c['ticker']} {f['report_date']} missing {sorted({'1', '1A', '7'} - set(sizes))}")
     embedder = None if args.no_dense else try_embedder()
     build_text_db(config.TEXT_DB_PATH, chunks, embedder)

@@ -7,8 +7,11 @@ between headings (the real section, not the table-of-contents line).
 from __future__ import annotations
 
 import re
+import warnings
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
+
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)  # iXBRL files often start with an XML declaration
 
 ITEMS = {"1": "Business", "1A": "Risk Factors", "7": "MD&A"}
 _BLOCK = {"p", "div", "tr", "li", "h1", "h2", "h3", "h4", "h5", "h6", "table", "section", "ul", "ol"}
@@ -43,7 +46,9 @@ def split_items(text: str, min_chars: int = 1500) -> dict[str, str]:
     for i, (pos, key) in enumerate(marks):
         if key not in ITEMS:
             continue
-        end = marks[i + 1][0] if i + 1 < len(marks) else len(text)
+        # a section ends at the next heading of a *different* item: some filings repeat the
+        # current item as a running page header ("PART I / Item 1") on every page
+        end = next((p for p, k in marks[i + 1:] if k != key), len(text))
         region = text[pos:end].strip()
         if len(region) >= min_chars and len(region) > len(best.get(key, "")):
             best[key] = region
@@ -76,7 +81,10 @@ def chunk_text(text: str, target: int = 200, max_words: int = 300, min_words: in
 
 def filing_chunks(html: bytes | str, ticker: str, accession: str, period_end: str) -> tuple[list[dict], dict[str, int]]:
     """Chunk records for one filing, plus {item: chars} for diagnostics."""
-    sections = split_items(html_to_text(html))
+    text = html_to_text(html)
+    sections = split_items(text)
+    if not sections:   # filings with a non-standard layout: keep the whole text, untagged, rather than lose it
+        sections = {"all": text}
     out = []
     for item, body in sections.items():
         for n, ch in enumerate(chunk_text(body)):

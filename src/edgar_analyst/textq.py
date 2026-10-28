@@ -32,7 +32,7 @@ def employee_facts(text: str):
 def generate_text_questions(text_conn: sqlite3.Connection, names: dict[str, str]) -> list[dict]:
     """One employee-count question per filing that states it. `names` maps ticker to company name."""
     rows = text_conn.execute(
-        "SELECT ticker, accession, period_end, key, text FROM chunks WHERE item='1' ORDER BY ticker, period_end, id").fetchall()
+        "SELECT ticker, accession, period_end, key, text FROM chunks WHERE item IN ('1', 'all') ORDER BY ticker, period_end, id").fetchall()
     seen, qs = set(), []
     for ticker, accession, period_end, key, text in rows:
         if accession in seen:
