@@ -22,6 +22,7 @@ Question tiers (`evals/questions.jsonl`):
 | 1 | Lookup | "What was X's net income for the fiscal year ended …? (USD millions)" |
 | 2 | Multi-step | Year-over-year growth, R&D as a percentage of revenue, margins |
 | 3 | Comparison | "Which had the higher R&D intensity, X or Y?" / "Did X's margin increase or decrease between …?" |
+| 4 | Text only | "How many employees did X report in its 10-K for fiscal year …?" (the answer exists only in the filing text; the key is the figure the filing states, found by pattern, with the supporting quote and chunk kept) |
 | 0 | Abstain | Future periods and companies outside the corpus: the right answer is "I can't answer that" |
 
 The same seed always produces the same questions. `edgar_analyst/grading.py` scores
@@ -37,8 +38,11 @@ choices by ticker or company name, and refusals on unanswerable questions.
 - `db.py`: SQLite facts store, plus `run_readonly_query`, the hardened SQL entry point the
   agent will use: read-only connection, SELECT-only authorizer, one statement, row cap, time limit.
 - `questions.py` and `grading.py`: the evaluation set and its grader.
+- `filings.py`, `textdb.py`, `textq.py`: 10-K HTML to Item 1 / 1A / 7 chunks (whole-text fallback for non-standard layouts), hybrid
+  search (SQLite FTS5 BM25 + local `bge-small` embeddings via fastembed, fused with reciprocal rank fusion), and tier 4 questions
+  generated from the filing text itself.
 - `llm.py`, `agent.py`, `evalrun.py`: the Groq client, the two answer systems, and the resumable runner, grader and report.
-- 60 unit tests on synthetic, SEC-shaped data (including attempted SQL writes, runaway queries, rate limits, quota fallback and cache replay, with a fake Groq transport).
+- 80 unit tests on synthetic, SEC-shaped data (including attempted SQL writes, runaway queries, rate limits, quota fallback and cache replay, with a fake Groq transport).
 
 Known gaps: the corpus is 10 companies for now, and companies that don't tag R&D expense the
 standard way (for example Amazon) have no R&D-based questions.
@@ -89,33 +93,50 @@ repository variable to your email first).
 ## Roadmap
 
 - [x] Week 1: data pipeline (verified on live SEC data), facts DB, question generator and grader
-- [ ] Week 1-2: filing text sections and hybrid retrieval (vector plus keyword, reranking)
+- [x] Week 1-2: filing text sections and hybrid retrieval (BM25 plus local embeddings, rank fusion); reranking still to do
 - [x] Groq client and evaluation harness (facts-only agent: SQL plus calculator), awaiting first run
-- [ ] Week 2: add the third tool (text search over filing sections) to the agent
-- [ ] Week 3: full evaluation runs: plain RAG vs RAG plus tools vs full agent; quality gate in CI
+- [x] Week 2: third tool (text search over filing sections) added to the agent (`full_agent`)
+- [ ] Week 3: full evaluation runs (in progress, nightly): plain RAG vs RAG plus tools vs full agent; quality gate in CI
 - [ ] Week 4: tracing and cost dashboard; Docker; AWS deployment with Terraform
 - [ ] Week 5-6: load test, write-up with failure cases, demo video
 
 ## Results
 
-First full run on Groq's free tier: 164 questions over 10 companies, `temperature` 0, graded automatically
-against the SEC XBRL data (`evals/results/`, raw responses included).
+Groq's free tier allows only a few hundred agent questions a day, so runs are resumable and a nightly workflow
+continues them (see "Running on Groq's free tier"). Raw responses are in `evals/results/`.
+
+**Structured questions (tiers 0-3), first full run, v1 prompts** (164 questions, 10 companies, archived in
+`evals/results/archive/facts_agent_v1.jsonl`):
 
 | system | tier 1 lookup | tier 2 multi-step | tier 3 comparison | answerable overall | correct refusals | false refusals | citation recall |
 |---|---|---|---|---|---|---|---|
 | closed book (model memory) | 10.0% | 8.3% | 40.0% | 17.3% | 71.4% | 37.3% | n/a |
-| facts agent (SQL + calculator) | 100% | 100% | 90.0% | 97.3% | 100% | 1.3% | 48.0% |
+| facts agent v1 (SQL + calculator) | 100% | 100% | 90.0% | 97.3% | 100% | 1.3% | 48.0% |
+
+Without data access the model gets about 1 in 6 figure questions right and invents an answer for 29% of the unanswerable
+ones. With the facts tools the figures are right and every unanswerable question is declined. Citation recall was only 48%
+because the agent never saw accession numbers and invented the `SOURCES` line (dates, zeros). v2 adds a `lookup_fact` tool
+that returns the accession with every figure, a rule that sources must come from tool output, and reports citation
+**precision** as well as recall. The v2 re-run is in progress; its numbers will replace this row.
+
+**Text-only questions (tier 4), interim, full agent with `search_filings`** (hybrid retrieval over 3 fiscal years of 10-Ks):
+
+| | questions done | correct | retrieval hit (gold passage in the top results) |
+|---|---|---|---|
+| tier 4 (employee counts from filing text) | 16 of 23 | 14 (87.5%) | 16 (100%) |
+| tier 0 (unanswerable) | 14 of 14 | 14 correct refusals | n/a |
+
+The two misses: Amazon's 1,525,000 reported as "1,500,000" (the passage was retrieved; the model rounded), and one
+refusal although the passage was retrieved.
 
 Reading it honestly:
 
-- Without data access the model gets about 1 in 6 figure questions right and invents an answer for 29% of
-  the unanswerable ones. With the facts tools the figures are right and it declines every unanswerable question.
-- Questions come from the same database the agent queries, so this shows the agent uses its tools correctly,
-  not that it can read filings. That comes with the text-retrieval step.
-- Citation recall (share of the expected filings the answer cites) is only 48%: the answers are right
-  but the agent often leaves out or garbles the `SOURCES` line. This is the next thing to fix.
-- Of the 164 answers, 131 came from `gpt-oss-120b` and 31 from `gpt-oss-20b` (the 120b daily quota ran out
-  mid-run); 2 questions still error on malformed tool calls and count as wrong. Each record names its model.
-- Single run, no confidence intervals yet.
+- Questions about figures come from the same database the agent queries, so tiers 1-3 show the agent uses its tools correctly,
+  not that it can read filings. Tier 4 is the step toward that, but it is still one narrow question type (employee counts).
+  Broader text questions (risk factors, strategy) need a model-based grader and are not built yet.
+- Answers come from `gpt-oss-120b`, falling back to `gpt-oss-20b` when the daily quota runs out; each record names its model
+  and the report has a per-model table. The nightly job can also fall back to `llama-4-scout` if the key has access.
+- Retrieval is evaluated on 16 questions: encouraging, not a proof. No confidence intervals yet.
+- Retrieval is not reranked yet. Intel's 10-K has a non-standard layout and is indexed as unsectioned text.
 
 *Not investment advice. Figures come from public SEC filings and may contain errors.*
