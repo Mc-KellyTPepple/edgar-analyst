@@ -1,0 +1,1 @@
+{"message": {"role": "assistant", "tool_calls": [{"function": {"arguments": "{\"expression\":\"(62360-39098)/39098*100\"}", "name": "calculate"}, "id": "fc_d2b7d95b-76b4-402f-87f3-d900aaae0d4d", "type": "function"}]}, "model": "openai/gpt-oss-120b", "usage": {"completion_tokens": 50, "prompt_tokens": 803}}

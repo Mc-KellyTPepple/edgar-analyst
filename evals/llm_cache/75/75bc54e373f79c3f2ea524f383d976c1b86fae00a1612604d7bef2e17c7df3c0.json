@@ -1,0 +1,1 @@
+{"message": {"role": "assistant", "tool_calls": [{"function": {"arguments": "{\"metric\":\"net_income\",\"period_end\":\"2026-01-25\",\"ticker\":\"NVDA\"}", "name": "lookup_fact"}, "id": "fc_2af585ea-2109-484f-829e-fa850a5b88ba", "type": "function"}]}, "model": "openai/gpt-oss-120b", "usage": {"completion_tokens": 68, "prompt_tokens": 616}}

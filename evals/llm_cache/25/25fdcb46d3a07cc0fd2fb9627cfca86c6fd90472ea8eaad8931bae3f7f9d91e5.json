@@ -1,0 +1,1 @@
+{"message": {"role": "assistant", "tool_calls": [{"function": {"arguments": "{\"expression\":\"round(12248.0/513983.0*100,1)\"}", "name": "calculate"}, "id": "fc_0e7dfb30-d708-4558-a262-50c7890d13bf", "type": "function"}]}, "model": "openai/gpt-oss-120b", "usage": {"completion_tokens": 38, "prompt_tokens": 796}}

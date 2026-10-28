@@ -1,0 +1,1 @@
+{"message": {"role": "assistant", "tool_calls": [{"function": {"arguments": "{\"expression\":\"round(74842.0/282836.0*100,1)\"}", "name": "calculate"}, "id": "fc_c8ef48dd-8cc4-4dc5-bc78-65b46d006f2e", "type": "function"}]}, "model": "openai/gpt-oss-120b", "usage": {"completion_tokens": 38, "prompt_tokens": 801}}
