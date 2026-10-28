@@ -47,7 +47,7 @@ DEFAULT_LIMITS: dict[str, ModelLimits] = {
     "meta-llama/llama-4-scout-17b-16e-instruct": ModelLimits(30, 30_000, 1_000),
 }
 UNKNOWN_MODEL_LIMITS = ModelLimits(20, 6_000, 500)
-DEFAULT_MODELS = ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "llama-3.3-70b-versatile"]
+DEFAULT_MODELS = ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "meta-llama/llama-4-scout-17b-16e-instruct"]
 
 
 class LLMError(RuntimeError):

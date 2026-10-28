@@ -107,6 +107,9 @@ def summarize_results(results: list[dict]) -> dict:
         "mean_tokens": round(sum(r["prompt_tokens"] + r["completion_tokens"] for r in results) / n) if n else None,
         "p95_seconds": sorted(r["seconds"] for r in results)[max(0, int(0.95 * n) - 1)] if n else None,
         "models": sorted({r["model"] for r in results if r["model"]}),
+        "by_model": {m: {"n": len(rows), "accuracy": acc(rows)}
+                     for m in sorted({r["model"] for r in results if r["model"]})
+                     for rows in [[r for r in results if r["model"] == m and r["tier"] > 0]] if rows},
     }
 
 
@@ -137,4 +140,8 @@ def markdown_table(summaries: dict[str, dict]) -> str:
             pct(s["correct_refusal_rate"]), pct(s["false_refusal_rate"]), pct(s["citation_recall"]), pct(s.get("citation_precision")),
             pct(s.get("retrieval_hit_rate")),
             str(s["mean_tool_calls"]), str(s["mean_tokens"]), str(s["p95_seconds"])]) + " |")
-    return "\n".join(lines)
+    models = ["", "| system | model | answerable questions | accuracy |", "|---|---|---|---|"]
+    for name, sm in summaries.items():
+        for m, v in sm.get("by_model", {}).items():
+            models.append(f"| {name} | {m} | {v['n']} | {pct(v['accuracy'])} |")
+    return "\n".join(lines + (models if len(models) > 3 else []))

@@ -91,12 +91,22 @@ class AgentTests(unittest.TestCase):
         r = run_facts_agent(llm, "q?", self.conn)
         self.assertEqual(r["tool_calls"], 1)
 
-    def test_malformed_tool_call_is_retried_with_a_nudge(self):
+    def test_malformed_tool_call_finishes_from_a_flat_digest(self):
         from edgar_analyst.llm import LLMError
-        llm = ScriptedLLM(LLMError('Groq returned 400: {"code": "tool_use_failed"}'), reply("FINAL ANSWER: 3"))
+        llm = ScriptedLLM(reply(calls=[("calculate", {"expression": "2+2"})]),
+                          LLMError('Groq returned 400: {"code": "tool_use_failed"}'), reply("FINAL ANSWER: 4"))
         r = run_facts_agent(llm, "q?", self.conn)
         self.assertIn("FINAL ANSWER", r["text"])
-        self.assertIsNone(llm.calls[1]["tools"])
+        flat = llm.calls[2]["messages"]
+        self.assertTrue(all(m["role"] in ("system", "user") for m in flat))   # no tool-call history
+        self.assertIn("4", flat[1]["content"])
+
+    def test_last_step_uses_flat_digest(self):
+        loop = [reply(calls=[("calculate", {"expression": "1+1"})]) for _ in range(5)] + [reply("FINAL ANSWER: 2")]
+        llm = ScriptedLLM(*loop)
+        run_facts_agent(llm, "q?", self.conn, max_steps=6)
+        self.assertIsNone(llm.calls[-1]["tools"])
+        self.assertTrue(all(m["role"] in ("system", "user") for m in llm.calls[-1]["messages"]))
 
     def test_closed_book_has_no_tools(self):
         llm = ScriptedLLM(reply("FINAL ANSWER: 5"))
@@ -185,6 +195,7 @@ class ReportTests(unittest.TestCase):
         self.assertTrue(check_gate(s, 70.0, min_refusal=90.0))
         self.assertTrue(check_gate({}, 50.0))
         self.assertIn("| closed_book |", markdown_table({"closed_book": s}))
+        self.assertIn("| closed_book | fake | 4 | 75.0% |", markdown_table({"closed_book": s}))
 
 
 if __name__ == "__main__":
