@@ -129,6 +129,20 @@ def cmd_run_eval(args) -> None:
         print(f"stopped early: {summary['stopped']} (re-run later; finished questions are skipped)")
 
 
+def cmd_pending(args) -> None:
+    """Print how many (system, question) pairs are still unanswered, so a scheduled run can skip itself when finished."""
+    from .evalrun import load_questions, load_results
+
+    qids = {q["id"] for q in load_questions(config.QUESTIONS_PATH, config.TEXT_QUESTIONS_PATH)}
+    total = 0
+    for system in args.systems:
+        done = {k for k, v in load_results(config.RESULTS_DIR / f"{system}.jsonl").items() if not v.get("error")}
+        left = len(qids - done)
+        print(f"{system}: {left} of {len(qids)} questions left", file=sys.stderr)
+        total += left
+    print(total)
+
+
 def cmd_report(args) -> None:
     from .agent import SYSTEMS
     from .evalrun import check_gate, load_results, markdown_table, summarize_results
@@ -181,6 +195,9 @@ def main(argv=None) -> None:
     d.add_argument("--no-dense", action="store_true", help="full_agent: BM25 only, skip local embeddings")
     d.add_argument("--mode", choices=["live", "replay"], default="live", help="replay never touches the network")
     d.set_defaults(fn=cmd_run_eval)
+    h = sub.add_parser("pending", help="count unanswered (system, question) pairs")
+    h.add_argument("--systems", nargs="+", default=["full_agent", "facts_agent"])
+    h.set_defaults(fn=cmd_pending)
     e = sub.add_parser("report", help="summarize results; optionally enforce a quality gate")
     e.add_argument("--gate-system")
     e.add_argument("--min-accuracy", type=float, default=60.0)

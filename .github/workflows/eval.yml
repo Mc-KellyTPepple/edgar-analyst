@@ -10,7 +10,12 @@ name: Evaluate on Groq
 #   - repository variable SEC_CONTACT (your email), used to rebuild the facts database
 #   - repository SECRET GROQ_API_KEY (from console.groq.com/keys)
 
+# A nightly run (shortly after Groq's daily quota resets at 00:00 UTC) continues any unfinished
+# evaluation and does nothing once everything is answered.
+
 on:
+  schedule:
+    - cron: "15 0 * * *"
   workflow_dispatch:
     inputs:
       system:
@@ -55,29 +60,44 @@ jobs:
           [ -n "${{ vars.SEC_CONTACT }}" ] || { echo "::error::Set the SEC_CONTACT repository variable."; exit 1; }
           [ -n "$GROQ_API_KEY" ] || { echo "::error::Add the GROQ_API_KEY repository secret."; exit 1; }
       - run: pip install -e .
+      - name: Anything left to do?
+        id: pending
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "n=$(python -m edgar_analyst pending)" >> "$GITHUB_OUTPUT"
+          else
+            echo "n=1" >> "$GITHUB_OUTPUT"
+          fi
       - name: Rebuild facts database
+        if: steps.pending.outputs.n != '0'
         run: |
           python -m edgar_analyst ingest
           python -m edgar_analyst build-db
       - name: Build text index (full_agent only)
-        if: inputs.system == 'full_agent'
+        if: steps.pending.outputs.n != '0' && (inputs.system == 'full_agent' || github.event_name == 'schedule')
         run: |
           pip install fastembed
           python -m edgar_analyst ingest-text
       - name: Run evaluation
+        if: steps.pending.outputs.n != '0'
         run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            python -m edgar_analyst run-eval --system full_agent --max-requests 900
+            python -m edgar_analyst run-eval --system facts_agent --max-requests 900
+            exit 0
+          fi
           args="--system ${{ inputs.system }} --max-requests ${{ inputs.max_requests }}"
           [ -z "${{ inputs.tiers }}" ] || args="$args --tiers ${{ inputs.tiers }}"
           [ -z "${{ inputs.models }}" ] || args="$args --models ${{ inputs.models }}"
           python -m edgar_analyst run-eval $args
       - name: Report
-        if: always()
+        if: always() && steps.pending.outputs.n != '0'
         run: python -m edgar_analyst report | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Commit results
-        if: always()
+        if: always() && steps.pending.outputs.n != '0'
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
           git add evals/results evals/llm_cache evals/groq_ledger.json
-          git diff --cached --quiet || git commit -m "Evaluation results (${{ inputs.system }})"
+          git diff --cached --quiet || git commit -m "Evaluation results"
           git pull --rebase -X theirs && git push
