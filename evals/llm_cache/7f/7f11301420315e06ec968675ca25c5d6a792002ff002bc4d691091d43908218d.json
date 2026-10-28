@@ -1,0 +1,1 @@
+{"message": {"role": "assistant", "tool_calls": [{"function": {"arguments": "{\"query\":\"total employees 2023 Apple 10-K\",\"ticker\":\"AAPL\",\"year\":\"2023\"}", "name": "search_filings"}, "id": "fc_6e1b830f-7188-44bd-a767-c65d744ab9eb", "type": "function"}]}, "model": "openai/gpt-oss-20b", "usage": {"completion_tokens": 67, "prompt_tokens": 3615}}

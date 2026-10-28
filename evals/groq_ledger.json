@@ -6,7 +6,11 @@
  },
  "2026-10-28": {
   "openai/gpt-oss-120b": {
-   "requests": 53
+   "exhausted": true,
+   "requests": 103
+  },
+  "openai/gpt-oss-20b": {
+   "requests": 55
   }
  }
 }
