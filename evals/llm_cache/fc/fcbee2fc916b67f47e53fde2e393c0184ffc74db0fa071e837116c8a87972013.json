@@ -1,0 +1,1 @@
+{"message": {"content": "FINAL ANSWER: -52.7%\nSOURCES: 0000000000\n\n(Note: accession numbers were not provided in the query results; replace with actual accession if available.)", "role": "assistant"}, "model": "openai/gpt-oss-120b", "usage": {"completion_tokens": 41, "prompt_tokens": 785}}

@@ -1,0 +1,1 @@
+{"message": {"role": "assistant", "tool_calls": [{"function": {"arguments": "{\"sql\":\"SELECT period_end, value FROM financials WHERE ticker='TSLA' AND metric='revenue' ORDER BY period_end\"}", "name": "query_facts"}, "id": "fc_d33c4d86-25ee-45d1-8947-4db86f18b00d", "type": "function"}]}, "model": "openai/gpt-oss-120b", "usage": {"completion_tokens": 66, "prompt_tokens": 435}}

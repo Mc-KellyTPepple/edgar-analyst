@@ -1,0 +1,1 @@
+{"message": {"content": "FINAL ANSWER: 18.2%\nSOURCES: 2023-01-29,2024-01-28", "role": "assistant"}, "model": "openai/gpt-oss-120b", "usage": {"completion_tokens": 30, "prompt_tokens": 823}}

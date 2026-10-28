@@ -1,0 +1,1 @@
+{"message": {"content": "FINAL ANSWER: 24.8%\nSOURCES: 0000000000\n\n(Note: The accession number placeholder \"0000000000\" is used because the actual accession value was not retrieved in the query result.)", "role": "assistant"}, "model": "openai/gpt-oss-120b", "usage": {"completion_tokens": 49, "prompt_tokens": 561}}

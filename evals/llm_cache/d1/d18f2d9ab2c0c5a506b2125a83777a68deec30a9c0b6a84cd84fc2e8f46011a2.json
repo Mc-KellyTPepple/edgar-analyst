@@ -1,0 +1,1 @@
+{"message": {"role": "assistant", "tool_calls": [{"function": {"arguments": "{\"sql\":\"SELECT accession FROM financials WHERE ticker='AAPL' AND metric='revenue' AND period_end='2025-09-27'\"}", "name": "query_facts"}, "id": "fc_52033455-a926-4854-b3c3-9daf0b623e5f", "type": "function"}]}, "model": "openai/gpt-oss-120b", "usage": {"completion_tokens": 89, "prompt_tokens": 500}}

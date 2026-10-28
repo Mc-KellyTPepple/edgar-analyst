@@ -1,0 +1,1 @@
+{"message": {"content": "FINAL ANSWER: 18.9%\nSOURCES: 12443000000.0, 10467000000.0", "role": "assistant"}, "model": "openai/gpt-oss-120b", "usage": {"completion_tokens": 31, "prompt_tokens": 825}}
