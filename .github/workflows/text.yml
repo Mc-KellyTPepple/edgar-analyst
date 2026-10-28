@@ -1,0 +1,57 @@
+name: Build text index
+
+# Downloads the latest 10-K documents for the corpus, splits them into sections and chunks,
+# builds the hybrid search database (BM25 + local embeddings) and regenerates the
+# text-only evaluation questions (evals/text_questions.jsonl).
+#
+# Needs the SEC_CONTACT repository variable (your email), same as "Ingest SEC data".
+
+on:
+  workflow_dispatch:
+    inputs:
+      per_company:
+        description: "Most recent 10-Ks per company"
+        default: "3"
+
+permissions:
+  contents: write
+
+jobs:
+  text:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      SEC_USER_AGENT: edgar-analyst ${{ vars.SEC_CONTACT }}
+      PYTHONPATH: src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check contact variable
+        run: |
+          [ -n "${{ vars.SEC_CONTACT }}" ] || { echo "::error::Set the SEC_CONTACT repository variable."; exit 1; }
+      - run: pip install -e . fastembed
+      - name: Company data
+        run: |
+          python -m edgar_analyst ingest
+          python -m edgar_analyst build-db
+      - name: Filing text and search index
+        run: python -m edgar_analyst ingest-text --per-company ${{ inputs.per_company }} 2>&1 | tee ingest-text.log
+      - name: Text questions
+        run: python -m edgar_analyst gen-text-questions | tee -a ingest-text.log
+      - name: Summary
+        if: always()
+        run: |
+          { echo '### Text index'; echo '```'; cat ingest-text.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: text-db
+          path: data/text.db
+          retention-days: 14
+      - name: Commit questions
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add evals/text_questions.jsonl
+          git diff --cached --quiet || (git commit -m "Regenerate text questions" && git pull --rebase -X theirs && git push)

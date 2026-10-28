@@ -16,7 +16,7 @@ on:
       system:
         description: "Which system to evaluate"
         type: choice
-        options: [facts_agent, closed_book]
+        options: [facts_agent, full_agent, closed_book]
         default: facts_agent
       max_requests:
         description: "Max Groq requests this run (free-tier daily limits apply)"
@@ -54,11 +54,16 @@ jobs:
         run: |
           [ -n "${{ vars.SEC_CONTACT }}" ] || { echo "::error::Set the SEC_CONTACT repository variable."; exit 1; }
           [ -n "$GROQ_API_KEY" ] || { echo "::error::Add the GROQ_API_KEY repository secret."; exit 1; }
-      - run: pip install requests
+      - run: pip install -e .
       - name: Rebuild facts database
         run: |
           python -m edgar_analyst ingest
           python -m edgar_analyst build-db
+      - name: Build text index (full_agent only)
+        if: inputs.system == 'full_agent'
+        run: |
+          pip install fastembed
+          python -m edgar_analyst ingest-text
       - name: Run evaluation
         run: |
           args="--system ${{ inputs.system }} --max-requests ${{ inputs.max_requests }}"

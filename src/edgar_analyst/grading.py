@@ -83,6 +83,16 @@ def grade(question: dict, response: str) -> dict:
         ok = abs(got - want) <= ans["tolerance_abs"]
         return {"correct": ok, "reason": f"got {got}, expected {want}"}
 
+    if kind == "count":
+        picked = _pick_number(final)
+        if not picked:
+            return {"correct": False, "reason": "no number found"}
+        value, suf = picked
+        got = value * {"k": 1e3, "thousand": 1e3, "million": 1e6, "m": 1e6, "mm": 1e6}.get(suf, 1.0)
+        want = ans["value"]
+        ok = abs(got - want) <= abs(want) * ans["tolerance_rel"]
+        return {"correct": ok, "reason": f"got {got:,.0f}, expected {want:,.0f}"}
+
     if kind == "choice":
         hits = []
         for opt in ans["options"]:

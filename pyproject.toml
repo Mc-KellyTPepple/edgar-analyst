@@ -3,10 +3,11 @@ name = "edgar-analyst"
 version = "0.1.0"
 description = "A research agent for public company filings, with an automatically graded evaluation suite."
 requires-python = ">=3.11"
-dependencies = ["requests>=2.31"]
+dependencies = ["requests>=2.31", "beautifulsoup4>=4.12", "lxml>=5", "numpy>=1.26"]
 
 [project.optional-dependencies]
 dev = ["ruff>=0.5"]
+dense = ["fastembed>=0.3"]
 
 [build-system]
 requires = ["setuptools>=68"]

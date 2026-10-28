@@ -52,6 +52,44 @@ def cmd_gen_questions(args) -> None:
     print(f"wrote {config.QUESTIONS_PATH}")
 
 
+def cmd_ingest_text(args) -> None:
+    from .filings import filing_chunks
+    from .textdb import build_text_db, try_embedder
+
+    client = SecClient(config.user_agent(), config.RAW_DIR / "cache")
+    companies = json.loads((config.RAW_DIR / "companies.json").read_text())
+    chunks, problems = [], []
+    for c in companies:
+        sub = json.loads((config.RAW_DIR / "submissions" / f"{c['cik']}.json").read_text())
+        filings = sorted(extract_10k_filings(sub), key=lambda f: f["filed"], reverse=True)[: args.per_company]
+        for f in filings:
+            html = client.filing_document(c["cik"], f["accession"], f["primary_doc"])
+            ch, sizes = filing_chunks(html, c["ticker"], f["accession"], f["report_date"])
+            chunks += ch
+            print(f"{c['ticker']} {f['report_date']}: {len(html) // 1024} KB html, sections {sizes}, {len(ch)} chunks")
+            if set(sizes) < {"1", "1A", "7"}:
+                problems.append(f"{c['ticker']} {f['report_date']} missing {sorted({'1', '1A', '7'} - set(sizes))}")
+    embedder = None if args.no_dense else try_embedder()
+    build_text_db(config.TEXT_DB_PATH, chunks, embedder)
+    print(f"wrote {config.TEXT_DB_PATH}: {len(chunks)} chunks, dense={'yes' if embedder else 'no'}")
+    if problems:
+        print("sections not found (parser may need work):\n  " + "\n  ".join(problems))
+
+
+def cmd_gen_text_questions(args) -> None:
+    import sqlite3
+
+    from .questions import write_jsonl
+    from .textq import generate_text_questions
+
+    companies = json.loads((config.RAW_DIR / "companies.json").read_text())
+    names = {c["ticker"]: c["name"] for c in companies}
+    conn = sqlite3.connect(f"file:{config.TEXT_DB_PATH}?mode=ro", uri=True)
+    qs = generate_text_questions(conn, names)
+    write_jsonl(qs, config.TEXT_QUESTIONS_PATH)
+    print(f"wrote {len(qs)} text questions to {config.TEXT_QUESTIONS_PATH}")
+
+
 def _models(arg: str | None) -> list[str] | None:
     raw = arg or os.environ.get("EDGAR_MODELS", "")
     return [m.strip() for m in raw.split(",") if m.strip()] or None
@@ -67,9 +105,17 @@ def cmd_run_eval(args) -> None:
     except LLMError as exc:
         sys.exit(str(exc))
     conn = open_readonly(config.DB_PATH)
+    extras = {}
+    if args.system == "full_agent":
+        from .textdb import TextIndex, try_embedder
+
+        index = TextIndex(config.TEXT_DB_PATH, None if args.no_dense else try_embedder())
+        print(f"retrieval mode: {index.mode}")
+        extras["search"] = lambda q, ticker=None, year=None: index.search(q, k=4, ticker=ticker, year=year)
     tiers = {int(t) for t in args.tiers.split(",")} if args.tiers else None
     out = config.RESULTS_DIR / f"{args.system}.jsonl"
-    summary = run_eval(load_questions(config.QUESTIONS_PATH), args.system, llm, conn, out, tiers=tiers, limit=args.limit)
+    summary = run_eval(load_questions(config.QUESTIONS_PATH, config.TEXT_QUESTIONS_PATH), args.system, llm, conn, out,
+                       tiers=tiers, limit=args.limit, **extras)
     u = llm.usage
     print(f"{args.system}: attempted {summary['attempted']}, remaining {summary['remaining']}; "
           f"{u.requests} network requests, {u.cache_hits} cache hits, {u.retries} retries, "
@@ -115,12 +161,19 @@ def main(argv=None) -> None:
     c.add_argument("--seed", type=int, default=7)
     c.set_defaults(fn=cmd_gen_questions)
     from .agent import SYSTEMS
+    f = sub.add_parser("ingest-text", help="download 10-K documents and build data/text.db (BM25 + embeddings)")
+    f.add_argument("--per-company", type=int, default=3, help="most recent 10-Ks per company")
+    f.add_argument("--no-dense", action="store_true")
+    f.set_defaults(fn=cmd_ingest_text)
+    g = sub.add_parser("gen-text-questions", help="generate evals/text_questions.jsonl from the text database")
+    g.set_defaults(fn=cmd_gen_text_questions)
     d = sub.add_parser("run-eval", help="run a system over the questions with Groq (resumable)")
     d.add_argument("--system", choices=sorted(SYSTEMS), default="facts_agent")
     d.add_argument("--models", help="comma-separated Groq models, first is preferred (or EDGAR_MODELS)")
     d.add_argument("--max-requests", type=int, default=None, help="network requests allowed in this run")
     d.add_argument("--tiers", help="e.g. 1,2 (default: all)")
     d.add_argument("--limit", type=int, default=None, help="questions to attempt in this run")
+    d.add_argument("--no-dense", action="store_true", help="full_agent: BM25 only, skip local embeddings")
     d.add_argument("--mode", choices=["live", "replay"], default="live", help="replay never touches the network")
     d.set_defaults(fn=cmd_run_eval)
     e = sub.add_parser("report", help="summarize results; optionally enforce a quality gate")

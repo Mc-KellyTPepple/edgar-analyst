@@ -174,7 +174,7 @@ class ReportTests(unittest.TestCase):
         rows = [row(1, True, recall=1.0), row(1, True, recall=1.0), row(2, False, True), row(3, True, recall=0.5),
                 row(0, True, True), row(0, False)]
         s = summarize_results(rows)
-        self.assertEqual(s["accuracy_by_tier"], {"1": 100.0, "2": 0.0, "3": 100.0})
+        self.assertEqual(s["accuracy_by_tier"], {"1": 100.0, "2": 0.0, "3": 100.0, "4": None})
         self.assertEqual(s["accuracy_answerable"], 75.0)
         self.assertEqual(s["correct_refusal_rate"], 50.0)
         self.assertEqual(s["false_refusal_rate"], 25.0)

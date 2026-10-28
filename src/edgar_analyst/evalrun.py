@@ -14,8 +14,13 @@ from .grading import cited_accessions, grade
 from .llm import BudgetExhausted, CacheMiss
 
 
-def load_questions(path: Path) -> list[dict]:
-    return [json.loads(line) for line in Path(path).read_text().splitlines() if line.strip()]
+def load_questions(*paths: Path) -> list[dict]:
+    """Questions from one or more JSONL files (missing files are skipped)."""
+    out = []
+    for path in paths:
+        if Path(path).exists():
+            out += [json.loads(line) for line in Path(path).read_text().splitlines() if line.strip()]
+    return out
 
 
 def load_results(path: Path) -> dict[str, dict]:
@@ -26,7 +31,7 @@ def load_results(path: Path) -> dict[str, dict]:
 
 
 def run_eval(questions: list[dict], system: str, llm, conn, out_path: Path, tiers=None, limit: int | None = None,
-             progress=print) -> dict:
+             progress=print, **extras) -> dict:
     runner = SYSTEMS[system]
     out_path = Path(out_path)
     done = {k: v for k, v in load_results(out_path).items() if not v.get("error")}
@@ -42,14 +47,17 @@ def run_eval(questions: list[dict], system: str, llm, conn, out_path: Path, tier
         for i, q in enumerate(todo, 1):
             t0 = time.monotonic()
             try:
-                run = runner(llm, q["question"], conn=conn)
+                run = runner(llm, q["question"], conn=conn, **extras)
                 g = grade(q, run["text"])
                 evidence = {e["accession"] for e in q["evidence"]}
                 cited = cited_accessions(run["text"])
+                gold_chunks = {e["chunk"] for e in q["evidence"] if e.get("chunk")}
                 rec = {
                     "id": q["id"], "tier": q["tier"], "type": q["type"], "system": system, "correct": g["correct"],
                     "abstained": g.get("abstained", False), "reason": g["reason"], "response": run["text"],
                     "citation_recall": (len(evidence & cited) / len(evidence)) if evidence else None,
+                    "citation_precision": (len(evidence & cited) / len(cited)) if evidence and cited else None,
+                    "retrieval_hit": bool(gold_chunks & set(run.get("retrieved", []))) if gold_chunks else None,
                     "model": run["model"], "calls": run["calls"], "tool_calls": run["tool_calls"],
                     "prompt_tokens": run["prompt_tokens"], "completion_tokens": run["completion_tokens"],
                     "seconds": round(time.monotonic() - t0, 2), "error": None,
@@ -62,7 +70,8 @@ def run_eval(questions: list[dict], system: str, llm, conn, out_path: Path, tier
                 break
             except Exception as exc:  # one bad question should not end the run
                 rec = {"id": q["id"], "tier": q["tier"], "type": q["type"], "system": system, "correct": False,
-                       "abstained": False, "reason": "error", "response": "", "citation_recall": None, "model": "",
+                       "abstained": False, "reason": "error", "response": "", "citation_recall": None, "citation_precision": None,
+                       "retrieval_hit": None, "model": "",
                        "calls": 0, "tool_calls": 0, "prompt_tokens": 0, "completion_tokens": 0,
                        "seconds": round(time.monotonic() - t0, 2), "error": f"{type(exc).__name__}: {exc}"[:300]}
             fh.write(json.dumps(rec, sort_keys=True) + "\n")
@@ -76,13 +85,18 @@ def summarize_results(results: list[dict]) -> dict:
     def acc(rows):
         return round(100 * sum(r["correct"] for r in rows) / len(rows), 1) if rows else None
 
-    answerable = [r for r in results if r["tier"] > 0]
+    answerable = [r for r in results if r["tier"] in (1, 2, 3)]
+    text_rows = [r for r in results if r["tier"] == 4]
+    hits = [r["retrieval_hit"] for r in text_rows if r.get("retrieval_hit") is not None]
+    precision = [r["citation_precision"] for r in answerable if r.get("citation_precision") is not None]
     refusals = [r for r in results if r["tier"] == 0]
     cited = [r["citation_recall"] for r in answerable if r["citation_recall"] is not None]
     n = len(results)
     return {
         "questions": n,
-        "accuracy_by_tier": {str(t): acc([r for r in results if r["tier"] == t]) for t in (1, 2, 3)},
+        "accuracy_by_tier": {str(t): acc([r for r in results if r["tier"] == t]) for t in (1, 2, 3, 4)},
+        "retrieval_hit_rate": round(100 * sum(hits) / len(hits), 1) if hits else None,
+        "citation_precision": round(100 * sum(precision) / len(precision), 1) if precision else None,
         "accuracy_answerable": acc(answerable),
         "correct_refusal_rate": acc(refusals),
         "false_refusal_rate": round(100 * sum(r["abstained"] for r in answerable) / len(answerable), 1) if answerable else None,
@@ -112,14 +126,15 @@ def check_gate(summary: dict, min_accuracy: float, min_refusal: float | None = N
 
 
 def markdown_table(summaries: dict[str, dict]) -> str:
-    cols = ["system", "n", "tier 1", "tier 2", "tier 3", "answerable", "refusals", "false refusals", "citation recall",
+    cols = ["system", "n", "tier 1", "tier 2", "tier 3", "tier 4 (text)", "answerable (1-3)", "refusals", "false refusals", "citation recall", "citation precision", "retrieval hit",
             "tool calls", "tokens/q", "p95 s"]
     lines = ["| " + " | ".join(cols) + " |", "|" + "---|" * len(cols)]
     pct = lambda v: "-" if v is None else f"{v}%"  # noqa: E731
     for name, s in summaries.items():
         t = s["accuracy_by_tier"]
         lines.append("| " + " | ".join([
-            name, str(s["questions"]), pct(t["1"]), pct(t["2"]), pct(t["3"]), pct(s["accuracy_answerable"]),
-            pct(s["correct_refusal_rate"]), pct(s["false_refusal_rate"]), pct(s["citation_recall"]),
+            name, str(s["questions"]), pct(t["1"]), pct(t["2"]), pct(t["3"]), pct(t["4"]), pct(s["accuracy_answerable"]),
+            pct(s["correct_refusal_rate"]), pct(s["false_refusal_rate"]), pct(s["citation_recall"]), pct(s.get("citation_precision")),
+            pct(s.get("retrieval_hit_rate")),
             str(s["mean_tool_calls"]), str(s["mean_tokens"]), str(s["p95_seconds"])]) + " |")
     return "\n".join(lines)
