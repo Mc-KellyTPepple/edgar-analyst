@@ -96,47 +96,46 @@ repository variable to your email first).
 - [x] Week 1-2: filing text sections and hybrid retrieval (BM25 plus local embeddings, rank fusion); reranking still to do
 - [x] Groq client and evaluation harness (facts-only agent: SQL plus calculator), awaiting first run
 - [x] Week 2: third tool (text search over filing sections) added to the agent (`full_agent`)
-- [ ] Week 3: full evaluation runs (in progress, nightly): plain RAG vs RAG plus tools vs full agent; quality gate in CI
+- [x] Week 3: full evaluation runs (closed book vs facts agent vs full agent) and a quality gate in CI (on stored results)
+- [ ] Next: fix premature refusals in the full agent, rerun, then reranking
 - [ ] Week 4: tracing and cost dashboard; Docker; AWS deployment with Terraform
 - [ ] Week 5-6: load test, write-up with failure cases, demo video
 
 ## Results
 
-Groq's free tier allows only a few hundred agent questions a day, so runs are resumable and a nightly workflow
-continues them (see "Running on Groq's free tier"). Raw responses are in `evals/results/`.
+Full run of all 187 questions per system (164 structured over 10 companies, plus 23 text-only questions), `temperature` 0,
+graded automatically. Raw responses are in `evals/results/`; the first-run results with the old prompts are archived in
+`evals/results/archive/`.
 
-**Structured questions (tiers 0-3), first full run, v1 prompts** (164 questions, 10 companies, archived in
-`evals/results/archive/facts_agent_v1.jsonl`):
+| system | tier 1 lookup | tier 2 multi-step | tier 3 comparison | tier 4 filing text | answerable (1-3) | correct refusals (tier 0) | false refusals | citation recall | citation precision | retrieval hit |
+|---|---|---|---|---|---|---|---|---|---|---|
+| closed book (model memory) | 10.0% | 8.3% | 40.0% | - | 17.3% | 71.4% | 37.3% | n/a | n/a | n/a |
+| facts agent (SQL + lookup + calculator) | 100% | 100% | 75.0% | 0.0% | 93.3% | 100% | 5.3% | 94.7% | 100% | n/a |
+| full agent (+ filing search) | 92.0% | 93.3% | 52.5% | 69.6% | 82.0% | 100% | 18.0% | 86.4% | 100% | 91.3% |
 
-| system | tier 1 lookup | tier 2 multi-step | tier 3 comparison | answerable overall | correct refusals | false refusals | citation recall |
-|---|---|---|---|---|---|---|---|
-| closed book (model memory) | 10.0% | 8.3% | 40.0% | 17.3% | 71.4% | 37.3% | n/a |
-| facts agent v1 (SQL + calculator) | 100% | 100% | 90.0% | 97.3% | 100% | 1.3% | 48.0% |
+What the numbers say:
 
-Without data access the model gets about 1 in 6 figure questions right and invents an answer for 29% of the unanswerable
-ones. With the facts tools the figures are right and every unanswerable question is declined. Citation recall was only 48%
-because the agent never saw accession numbers and invented the `SOURCES` line (dates, zeros). v2 adds a `lookup_fact` tool
-that returns the accession with every figure, a rule that sources must come from tool output, and reports citation
-**precision** as well as recall. The v2 re-run is in progress; its numbers will replace this row.
+- **Data access is the difference.** Memory alone gets about 1 in 6 figure questions right and invents an answer for 29% of the
+  unanswerable ones. With the facts tools every lookup and multi-step calculation is right and every unanswerable question is declined.
+- **Citations are fixed.** Recall was 48% before the `lookup_fact` tool returned accession numbers to the model; now 95% with
+  no invented sources (precision 100%).
+- **The facts agent scores 0% on tier 4 by design.** It has no way to read filing text, and it declines every one of those questions,
+  which is the right behaviour for it and a control for the full agent.
+- **Filing search works, with a cost.** The full agent answers 69.6% of the text-only questions, and the gold passage is among the
+  retrieved results 91.3% of the time (the rest of the misses are refusals or rounding, e.g. 1,500,000 for Amazon's 1,525,000).
+- **The full agent is worse than the facts agent on figure questions (82.0% vs 93.3%).** Nearly all the extra misses are
+  refusals: on tier 3 it answers "I cannot answer" in 19 cases, often after zero tool calls. The prompt tells the model to
+  decline when the data cannot answer, and a longer tool list makes it give up too early. Planned fix: require a lookup before any refusal.
+  Not yet applied, so these numbers are from the current prompt.
+- Tier 3 is the hardest for both agents (comparisons need two lookups and a judgement).
 
-**Text-only questions (tier 4), interim, full agent with `search_filings`** (hybrid retrieval over 3 fiscal years of 10-Ks):
+Caveats: single run, no confidence intervals. Questions about figures come from the same database the agent queries, so tiers 1-3
+show correct tool use, not the ability to read filings; tier 4 is the step toward that but covers one question type (employee counts),
+and broader text questions would need a model-based grader. Answers come from `gpt-oss-120b`, with `gpt-oss-20b` taking over when the
+daily quota ran out; the facts agent's tier 1-2 answers were mostly produced by the 20b model, so a clean 120b-only run could
+differ. The report has a per-model table. Retrieval is not reranked, and Intel's 10-K is indexed as unsectioned text.
 
-| | questions done | correct | retrieval hit (gold passage in the top results) |
-|---|---|---|---|
-| tier 4 (employee counts from filing text) | 16 of 23 | 14 (87.5%) | 16 (100%) |
-| tier 0 (unanswerable) | 14 of 14 | 14 correct refusals | n/a |
-
-The two misses: Amazon's 1,525,000 reported as "1,500,000" (the passage was retrieved; the model rounded), and one
-refusal although the passage was retrieved.
-
-Reading it honestly:
-
-- Questions about figures come from the same database the agent queries, so tiers 1-3 show the agent uses its tools correctly,
-  not that it can read filings. Tier 4 is the step toward that, but it is still one narrow question type (employee counts).
-  Broader text questions (risk factors, strategy) need a model-based grader and are not built yet.
-- Answers come from `gpt-oss-120b`, falling back to `gpt-oss-20b` when the daily quota runs out; each record names its model
-  and the report has a per-model table. The nightly job can also fall back to `llama-4-scout` if the key has access.
-- Retrieval is evaluated on 16 questions: encouraging, not a proof. No confidence intervals yet.
-- Retrieval is not reranked yet. Intel's 10-K has a non-standard layout and is indexed as unsectioned text.
+The CI workflow replays these stored results through a quality gate (facts agent: at least 85% answerable accuracy and 95% correct
+refusals), so a change that breaks the recorded numbers fails the build. It does not call the API.
 
 *Not investment advice. Figures come from public SEC filings and may contain errors.*
