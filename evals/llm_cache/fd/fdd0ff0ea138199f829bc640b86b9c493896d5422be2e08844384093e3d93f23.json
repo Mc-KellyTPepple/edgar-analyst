@@ -1,0 +1,1 @@
+{"message": {"role": "assistant", "tool_calls": [{"function": {"arguments": "{\"query\":\"employees Microsoft Corporation 2026-06-30 10-K\",\"ticker\":\"MSFT\",\"year\":\"2026\"}", "name": "search_filings"}, "id": "fc_97aef426-ea45-42f5-9b4a-30c44064ebd9", "type": "function"}]}, "model": "openai/gpt-oss-20b", "usage": {"completion_tokens": 59, "prompt_tokens": 625}}

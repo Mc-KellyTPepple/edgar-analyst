@@ -1,0 +1,1 @@
+{"message": {"role": "assistant", "tool_calls": [{"function": {"arguments": "{\"query\":\"As of the end of fiscal year 2024, we had\",\"ticker\":\"NVDA\",\"year\":\"2024\"}", "name": "search_filings"}, "id": "fc_7d1b7817-41a4-4082-8ea0-235210e749c2", "type": "function"}]}, "model": "openai/gpt-oss-20b", "usage": {"completion_tokens": 65, "prompt_tokens": 1452}}

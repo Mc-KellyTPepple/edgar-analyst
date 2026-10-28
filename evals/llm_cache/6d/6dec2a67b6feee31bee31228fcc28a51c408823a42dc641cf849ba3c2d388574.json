@@ -1,0 +1,1 @@
+{"message": {"role": "assistant", "tool_calls": [{"function": {"arguments": "{\"query\":\"employees NVIDIA Corporation 2024 10-K\",\"ticker\":\"NVDA\",\"year\":\"2024\"}", "name": "search_filings"}, "id": "fc_99f458ce-6a38-4202-b210-4f7f09bc5e8b", "type": "function"}]}, "model": "openai/gpt-oss-20b", "usage": {"completion_tokens": 54, "prompt_tokens": 623}}

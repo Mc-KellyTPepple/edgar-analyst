@@ -1,0 +1,1 @@
+{"message": {"role": "assistant", "tool_calls": [{"function": {"arguments": "{\"query\":\"Meta Platforms employees 2025 10-K\",\"ticker\":\"META\",\"year\":\"2025\"}", "name": "search_filings"}, "id": "fc_9734f137-9d6e-4485-afb5-d860bd4d3916", "type": "function"}]}, "model": "openai/gpt-oss-20b", "usage": {"completion_tokens": 46, "prompt_tokens": 624}}

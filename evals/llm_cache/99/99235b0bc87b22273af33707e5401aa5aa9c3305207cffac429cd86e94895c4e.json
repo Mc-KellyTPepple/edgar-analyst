@@ -1,0 +1,1 @@
+{"message": {"role": "assistant", "tool_calls": [{"function": {"arguments": "{\"query\":\"\\\"employees\\\" \\\"Item 1A\\\" Apple 2023\",\"ticker\":\"AAPL\",\"year\":\"2023\"}", "name": "search_filings"}, "id": "fc_95f65e39-61b7-4224-91d6-ba63b1d94ee6", "type": "function"}]}, "model": "openai/gpt-oss-20b", "usage": {"completion_tokens": 73, "prompt_tokens": 3592}}
