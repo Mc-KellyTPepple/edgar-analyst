@@ -1,0 +1,50 @@
+/home/runner/work/edgar-analyst/edgar-analyst/src/edgar_analyst/filings.py:20: XMLParsedAsHTMLWarning: It looks like you're using an HTML parser to parse an XML document.
+
+Assuming this really is an XML document, what you're doing might work, but you should know that using an XML parser will be more reliable. To parse this document as XML, make sure you have the Python package 'lxml' installed, and pass the keyword argument `features="xml"` into the BeautifulSoup constructor.
+
+If you want or need to use an HTML parser on this document, you can make this warning go away by filtering it. To do that, run this code before calling the BeautifulSoup constructor:
+
+    from bs4 import XMLParsedAsHTMLWarning
+    import warnings
+
+    warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
+
+  soup = BeautifulSoup(raw, "lxml")
+[0;93m2026-10-28 07:46:13.319270698 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
+NVDA 2026-01-25: 1921 KB html, sections {'1': 48301, '1A': 114868, '7': 34936}, 123 chunks
+NVDA 2025-01-26: 2019 KB html, sections {'1': 54849, '1A': 110840, '7': 38642}, 123 chunks
+NVDA 2024-01-28: 2036 KB html, sections {'1': 51655, '1A': 106849, '7': 41103}, 123 chunks
+AMD 2025-12-27: 2123 KB html, sections {'1': 59820, '1A': 131782, '7': 37980}, 138 chunks
+AMD 2024-12-28: 2042 KB html, sections {'1': 57195, '1A': 126021, '7': 33121}, 126 chunks
+AMD 2023-12-30: 2080 KB html, sections {'1': 64947, '1A': 125617, '7': 35504}, 129 chunks
+INTC 2025-12-27: 3242 KB html, sections {}, 0 chunks
+INTC 2024-12-28: 3256 KB html, sections {}, 0 chunks
+INTC 2023-12-30: 3199 KB html, sections {}, 0 chunks
+MSFT 2026-06-30: 8384 KB html, sections {'1': 4983, '1A': 5907, '7': 4874}, 10 chunks
+MSFT 2025-06-30: 7966 KB html, sections {'1': 4689, '1A': 6079, '7': 5170}, 10 chunks
+MSFT 2024-06-30: 6700 KB html, sections {'1': 5041, '1A': 5954, '7': 4728}, 9 chunks
+AAPL 2025-09-27: 1484 KB html, sections {'1': 15995, '1A': 68042, '7': 18740}, 62 chunks
+AAPL 2024-09-28: 1468 KB html, sections {'1': 15699, '1A': 68757, '7': 16069}, 62 chunks
+AAPL 2023-09-30: 1522 KB html, sections {'1': 15096, '1A': 67872, '7': 16218}, 62 chunks
+GOOGL 2025-12-31: 2555 KB html, sections {'1': 23835, '1A': 85323, '7': 53247}, 109 chunks
+GOOGL 2024-12-31: 2469 KB html, sections {'1': 30688, '1A': 83480, '7': 59248}, 118 chunks
+GOOGL 2023-12-31: 2354 KB html, sections {'1': 32500, '1A': 76174, '7': 60952}, 111 chunks
+AMZN 2025-12-31: 1922 KB html, sections {'1': 13706, '1A': 60699, '7': 46976}, 77 chunks
+AMZN 2024-12-31: 1877 KB html, sections {'1': 13397, '1A': 59410, '7': 49374}, 79 chunks
+AMZN 2023-12-31: 1899 KB html, sections {'1': 13406, '1A': 58989, '7': 48790}, 77 chunks
+META 2025-12-31: 2316 KB html, sections {'1': 24599, '1A': 195756, '7': 62247}, 179 chunks
+META 2024-12-31: 2314 KB html, sections {'1': 40373, '1A': 188828, '7': 63047}, 184 chunks
+TSLA 2025-12-31: 2335 KB html, sections {'1': 45494, '1A': 83792, '7': 57065}, 116 chunks
+TSLA 2024-12-31: 2535 KB html, sections {'1': 49652, '1A': 79781, '7': 50341}, 110 chunks
+TSLA 2023-12-31: 2610 KB html, sections {'1': 45687, '1A': 79256, '7': 50907}, 108 chunks
+ORCL 2026-05-31: 6712 KB html, sections {'1': 56274, '1A': 101698, '7': 65317}, 129 chunks
+ORCL 2025-05-31: 6396 KB html, sections {'1': 58298, '1A': 78310, '7': 73651}, 123 chunks
+ORCL 2024-05-31: 5196 KB html, sections {'1': 64008, '1A': 77150, '7': 72118}, 122 chunks
+Fetching 5 files:   0%|          | 0/5 [00:00<?, ?it/s]Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Fetching 5 files:  20%|██        | 1/5 [00:00<00:00,  8.10it/s]Fetching 5 files: 100%|██████████| 5/5 [00:01<00:00,  4.67it/s]Fetching 5 files: 100%|██████████| 5/5 [00:01<00:00,  4.79it/s]
+wrote /home/runner/work/edgar-analyst/edgar-analyst/data/text.db: 2619 chunks, dense=yes
+sections not found (parser may need work):
+  INTC 2025-12-27 missing ['1', '1A', '7']
+  INTC 2024-12-28 missing ['1', '1A', '7']
+  INTC 2023-12-30 missing ['1', '1A', '7']
+wrote 17 text questions to /home/runner/work/edgar-analyst/edgar-analyst/evals/text_questions.jsonl
