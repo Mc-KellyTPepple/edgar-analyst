@@ -138,7 +138,7 @@ def run_tool(name: str, args: dict, conn, search=None, retrieved: list | None = 
         return f"error: {exc}"
 
 
-def _flatten(llm, system: str, question: str, messages: list, max_tokens: int = 600) -> dict:
+def _flatten(llm, system: str, question: str, messages: list, max_tokens: int = 600, temperature: float = 0.0) -> dict:
     """Ask for the final answer from a plain-text digest of the tool results, with no tool machinery in the request.
 
     Models sometimes keep emitting tool calls when the history contains tool calls but no tools are offered
@@ -148,18 +148,32 @@ def _flatten(llm, system: str, question: str, messages: list, max_tokens: int = 
     prompt = (f"{question}\n\nData retrieved so far:\n" + "\n---\n".join(notes)
               + "\n\nAnswer now using only this data. End with the FINAL ANSWER and SOURCES lines "
                 "(accession numbers exactly as shown above), or say you cannot answer.")
-    return llm.chat([{"role": "system", "content": system}, {"role": "user", "content": prompt}], max_tokens=max_tokens)
+    return llm.chat([{"role": "system", "content": system}, {"role": "user", "content": prompt}],
+                    max_tokens=max_tokens, temperature=temperature)
+
+
+_RECOVERABLE = ("tool_use_failed", "Parsing failed", "could not be parsed", "json_validate_failed")
+
+
+def _is_recoverable(exc: Exception) -> bool:
+    return any(t in str(exc) for t in _RECOVERABLE)
 
 
 def _chat(llm, messages: list, tools, max_tokens: int, fallback=None) -> dict:
+    """`fallback(temperature)` finishes from a flat digest; used when no tools are offered or the model's output is malformed."""
     try:
         if tools is None and fallback is not None:
-            return fallback()
+            return fallback(0.0)
         return llm.chat(messages, tools=tools, max_tokens=max_tokens)
     except LLMError as exc:
-        if "tool_use_failed" not in str(exc) or fallback is None:
+        if not _is_recoverable(exc) or fallback is None:
             raise
-        return fallback()   # malformed tool call: finish from the digest instead of failing the question
+    try:
+        return fallback(0.0)
+    except LLMError as exc:
+        if not _is_recoverable(exc):
+            raise
+        return fallback(0.4)   # the same prompt failed deterministically; a little sampling noise gets past it
 
 
 def run_closed_book(llm, question: str, **_) -> dict:
@@ -179,7 +193,7 @@ def _agent(llm, question: str, conn, system: str, tools: list, search=None, max_
     for step in range(max_steps):
         last = step == max_steps - 1
         resp = _chat(llm, messages, None if last else tools, 600,
-                     fallback=lambda: _flatten(llm, system, question, messages))
+                     fallback=lambda t: _flatten(llm, system, question, messages, temperature=t))
         calls += 1
         model = resp["model"]
         prompt += resp["usage"]["prompt_tokens"]

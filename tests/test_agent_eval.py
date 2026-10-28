@@ -101,6 +101,21 @@ class AgentTests(unittest.TestCase):
         self.assertTrue(all(m["role"] in ("system", "user") for m in flat))   # no tool-call history
         self.assertIn("4", flat[1]["content"])
 
+    def test_parse_failure_and_repeat_failure_are_both_recovered(self):
+        from edgar_analyst.llm import LLMError
+        llm = ScriptedLLM(reply(calls=[("calculate", {"expression": "1+1"})]),
+                          LLMError("Groq returned 400: Parsing failed. The model generated output that could not be parsed"),
+                          LLMError("Groq returned 400: tool_use_failed"), reply("FINAL ANSWER: 2"))
+        r = run_facts_agent(llm, "q?", self.conn)
+        self.assertIn("FINAL ANSWER", r["text"])
+        self.assertEqual(r["calls"], 2)
+
+    def test_unrelated_errors_still_raise(self):
+        from edgar_analyst.llm import LLMError
+        llm = ScriptedLLM(LLMError("Groq returned 401: invalid key"))
+        with self.assertRaises(LLMError):
+            run_facts_agent(llm, "q?", self.conn)
+
     def test_last_step_uses_flat_digest(self):
         loop = [reply(calls=[("calculate", {"expression": "1+1"})]) for _ in range(5)] + [reply("FINAL ANSWER: 2")]
         llm = ScriptedLLM(*loop)
