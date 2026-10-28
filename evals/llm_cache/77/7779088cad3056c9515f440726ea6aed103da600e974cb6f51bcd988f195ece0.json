@@ -1,0 +1,1 @@
+{"message": {"content": "FINAL ANSWER: I cannot answer.  \nSOURCES: <|constrain|>1, 2", "role": "assistant"}, "model": "openai/gpt-oss-20b", "usage": {"completion_tokens": 47, "prompt_tokens": 781}}

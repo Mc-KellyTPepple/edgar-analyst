@@ -8,6 +8,9 @@
   "openai/gpt-oss-120b": {
    "exhausted": true,
    "requests": 249
+  },
+  "openai/gpt-oss-20b": {
+   "requests": 122
   }
  }
 }
