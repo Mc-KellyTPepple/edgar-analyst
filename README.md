@@ -98,7 +98,24 @@ repository variable to your email first).
 
 ## Results
 
-To be filled in after the evaluation runs. This section will hold the measured comparison
-(accuracy by tier, citation correctness, refusal rate, cost per question, p95 latency).
+First full run on Groq's free tier: 164 questions over 10 companies, `temperature` 0, graded automatically
+against the SEC XBRL data (`evals/results/`, raw responses included).
+
+| system | tier 1 lookup | tier 2 multi-step | tier 3 comparison | answerable overall | correct refusals | false refusals | citation recall |
+|---|---|---|---|---|---|---|---|
+| closed book (model memory) | 10.0% | 8.3% | 40.0% | 17.3% | 71.4% | 37.3% | n/a |
+| facts agent (SQL + calculator) | 100% | 100% | 90.0% | 97.3% | 100% | 1.3% | 48.0% |
+
+Reading it honestly:
+
+- Without data access the model gets about 1 in 6 figure questions right and invents an answer for 29% of
+  the unanswerable ones. With the facts tools the figures are right and it declines every unanswerable question.
+- Questions come from the same database the agent queries, so this shows the agent uses its tools correctly,
+  not that it can read filings. That comes with the text-retrieval step.
+- Citation recall (share of the expected filings the answer cites) is only 48%: the answers are right
+  but the agent often leaves out or garbles the `SOURCES` line. This is the next thing to fix.
+- Of the 164 answers, 131 came from `gpt-oss-120b` and 31 from `gpt-oss-20b` (the 120b daily quota ran out
+  mid-run); 2 questions still error on malformed tool calls and count as wrong. Each record names its model.
+- Single run, no confidence intervals yet.
 
 *Not investment advice. Figures come from public SEC filings and may contain errors.*
