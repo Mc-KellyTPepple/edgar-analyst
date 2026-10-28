@@ -18,6 +18,7 @@ from .llm import LLMError
 from .db import QueryError, run_readonly_query
 from .facts import METRICS
 
+PROMPT_VERSION = "v3"   # v2: first full run; v3: no refusal before the data has been checked
 METRIC_NAMES = ", ".join(METRICS)
 
 _RULES = f"""You answer questions about US public companies from a read-only SQLite database of annual (10-K) figures{{extra}}.
@@ -26,7 +27,7 @@ value_musd is US dollars in millions; period_end is the fiscal year end date; me
 Rules:
 - Never guess a figure. Read each figure with lookup_fact (it returns the accession) or query_facts, and do all arithmetic with calculate.
 - Fiscal years differ by company, so match periods by period_end date.
-{{more}}- If the data cannot answer (future period, company or metric not present), say you cannot answer.
+{{more}}- Never say you cannot answer before you have used the tools. Look the figures up first, and decline only if the tools show the data is missing (no row, a period that has not been reported, a company or metric not in the data).
 - Finish with exactly two lines:
 FINAL ANSWER: <answer in the unit the question asks for>
 SOURCES: <the accession numbers (like 0001045810-24-000029) returned by the tools for the figures you used, comma separated>"""
@@ -214,7 +215,7 @@ def _agent(llm, question: str, conn, system: str, tools: list, search=None, max_
             messages.append({"role": "tool", "tool_call_id": tc["id"], "content": out[:3500]})
         if step == max_steps - 2:
             messages.append({"role": "user", "content": "Out of steps. Give your best FINAL ANSWER and SOURCES now, or say you cannot answer."})
-    return {"text": text, "steps": steps, "tool_calls": tool_calls, "model": model, "calls": calls,
+    return {"prompt_version": PROMPT_VERSION, "text": text, "steps": steps, "tool_calls": tool_calls, "model": model, "calls": calls,
             "prompt_tokens": prompt, "completion_tokens": completion, "retrieved": retrieved, "seen_accessions": sorted(seen)}
 
 

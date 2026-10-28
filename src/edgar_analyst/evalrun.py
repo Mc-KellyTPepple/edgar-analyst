@@ -30,6 +30,20 @@ def load_results(path: Path) -> dict[str, dict]:
     return {r["id"]: r for r in (json.loads(line) for line in p.read_text().splitlines() if line.strip())}
 
 
+def drop_false_refusals(path: Path, archive_path: Path, tiers: set[int]) -> int:
+    """Move answerable questions that were wrongly declined out of the results file (into an archive) so they are re-run."""
+    results = load_results(path)
+    drop = {k for k, r in results.items() if r["tier"] in tiers and r.get("abstained") and not r["correct"]}
+    if not drop:
+        return 0
+    archive_path = Path(archive_path)
+    archive_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(archive_path, "a", encoding="utf-8") as fh:
+        fh.writelines(json.dumps(results[k], sort_keys=True) + "\n" for k in sorted(drop))
+    Path(path).write_text("".join(json.dumps(r, sort_keys=True) + "\n" for k, r in results.items() if k not in drop), encoding="utf-8")
+    return len(drop)
+
+
 def run_eval(questions: list[dict], system: str, llm, conn, out_path: Path, tiers=None, limit: int | None = None,
              progress=print, **extras) -> dict:
     runner = SYSTEMS[system]
@@ -53,7 +67,7 @@ def run_eval(questions: list[dict], system: str, llm, conn, out_path: Path, tier
                 cited = cited_accessions(run["text"])
                 gold_chunks = {e["chunk"] for e in q["evidence"] if e.get("chunk")}
                 rec = {
-                    "id": q["id"], "tier": q["tier"], "type": q["type"], "system": system, "correct": g["correct"],
+                    "id": q["id"], "prompt_version": run.get("prompt_version", "v2"), "tier": q["tier"], "type": q["type"], "system": system, "correct": g["correct"],
                     "abstained": g.get("abstained", False), "reason": g["reason"], "response": run["text"],
                     "citation_recall": (len(evidence & cited) / len(evidence)) if evidence else None,
                     "citation_precision": (len(evidence & cited) / len(cited)) if evidence and cited else None,

@@ -26,6 +26,10 @@ on:
       max_requests:
         description: "Max Groq requests this run (free-tier daily limits apply)"
         default: "400"
+      redo_refusals:
+        description: "Re-run only the answerable questions that were wrongly declined"
+        type: boolean
+        default: false
       tiers:
         description: "Tiers to run, e.g. 0,1,2,3 (empty = all)"
         required: false
@@ -87,6 +91,7 @@ jobs:
             exit 0
           fi
           args="--system ${{ inputs.system }} --max-requests ${{ inputs.max_requests }}"
+          [ "${{ inputs.redo_refusals }}" != "true" ] || args="$args --redo-refusals"
           [ -z "${{ inputs.tiers }}" ] || args="$args --tiers ${{ inputs.tiers }}"
           [ -z "${{ inputs.models }}" ] || args="$args --models ${{ inputs.models }}"
           python -m edgar_analyst run-eval $args

@@ -176,6 +176,18 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual((s["attempted"], s["remaining"], res["a"]["correct"]), (1, 0, True))
         self.assertEqual(len(self.out.read_text().splitlines()), 1)
 
+    def test_false_refusals_are_archived_for_rerun(self):
+        from edgar_analyst.evalrun import drop_false_refusals
+        llm = ScriptedLLM(reply("I cannot answer."), reply("FINAL ANSWER: 2400"), reply("I cannot answer."))
+        run_eval(QS, "closed_book", llm, None, self.out, progress=lambda *_: None)
+        arch = self.out.parent / "archive" / "x.jsonl"
+        self.assertEqual(drop_false_refusals(self.out, arch, {1, 2, 3}), 1)
+        self.assertEqual(sorted(load_results(self.out)), ["b", "c"])         # 'a' dropped; correct abstain 'c' kept
+        self.assertEqual(len(arch.read_text().splitlines()), 1)
+        s = run_eval(QS, "closed_book", ScriptedLLM(reply("FINAL ANSWER: 600")), None, self.out, progress=lambda *_: None)
+        self.assertEqual((s["attempted"], s["remaining"]), (1, 0))
+        self.assertEqual(drop_false_refusals(self.out, arch, {1, 2, 3}), 0)
+
     def test_tier_filter_and_limit(self):
         llm = ScriptedLLM(reply("FINAL ANSWER: 1"))
         s = run_eval(QS, "closed_book", llm, None, self.out, tiers={1}, limit=1, progress=lambda *_: None)

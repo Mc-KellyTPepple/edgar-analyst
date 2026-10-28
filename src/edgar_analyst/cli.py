@@ -119,6 +119,13 @@ def cmd_run_eval(args) -> None:
         extras["search"] = lambda q, ticker=None, year=None: index.search(q, k=4, ticker=ticker, year=year)
     tiers = {int(t) for t in args.tiers.split(",")} if args.tiers else None
     out = config.RESULTS_DIR / f"{args.system}.jsonl"
+    if args.redo_refusals:
+        from .evalrun import drop_false_refusals
+
+        # the facts agent has no way to read filing text, so declining tier 4 is correct for it
+        redo_tiers = {1, 2, 3} if args.system == "facts_agent" else {1, 2, 3, 4}
+        n = drop_false_refusals(out, config.RESULTS_DIR / "archive" / f"{args.system}_false_refusals_v2.jsonl", redo_tiers)
+        print(f"re-running {n} wrongly declined questions (old answers archived)")
     summary = run_eval(load_questions(config.QUESTIONS_PATH, config.TEXT_QUESTIONS_PATH), args.system, llm, conn, out,
                        tiers=tiers, limit=args.limit, **extras)
     u = llm.usage
@@ -192,6 +199,7 @@ def main(argv=None) -> None:
     d.add_argument("--max-requests", type=int, default=None, help="network requests allowed in this run")
     d.add_argument("--tiers", help="e.g. 1,2 (default: all)")
     d.add_argument("--limit", type=int, default=None, help="questions to attempt in this run")
+    d.add_argument("--redo-refusals", action="store_true", help="re-run only answerable questions that were wrongly declined")
     d.add_argument("--no-dense", action="store_true", help="full_agent: BM25 only, skip local embeddings")
     d.add_argument("--mode", choices=["live", "replay"], default="live", help="replay never touches the network")
     d.set_defaults(fn=cmd_run_eval)
