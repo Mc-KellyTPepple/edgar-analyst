@@ -63,7 +63,7 @@
       "1": null,
       "2": null,
       "3": null,
-      "4": 87.5
+      "4": 70.0
     },
     "by_model": {
       "openai/gpt-oss-20b": {
@@ -74,16 +74,16 @@
     "citation_precision": null,
     "citation_recall": null,
     "correct_refusal_rate": 100.0,
-    "errors": 0,
+    "errors": 4,
     "false_refusal_rate": null,
-    "mean_llm_calls": 2.27,
-    "mean_tokens": 3324,
-    "mean_tool_calls": 1.27,
+    "mean_llm_calls": 2.0,
+    "mean_tokens": 2933,
+    "mean_tool_calls": 1.12,
     "models": [
       "openai/gpt-oss-20b"
     ],
-    "p95_seconds": 181.56,
-    "questions": 30,
+    "p95_seconds": 300.05,
+    "questions": 34,
     "retrieval_hit_rate": 100.0
   }
 }
