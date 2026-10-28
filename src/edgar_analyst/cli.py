@@ -88,6 +88,11 @@ def cmd_gen_text_questions(args) -> None:
     qs = generate_text_questions(conn, names)
     write_jsonl(qs, config.TEXT_QUESTIONS_PATH)
     print(f"wrote {len(qs)} text questions to {config.TEXT_QUESTIONS_PATH}")
+    from .textq import unmatched_examples
+
+    matched = {q["evidence"][0]["accession"] for q in qs}
+    for label, examples in unmatched_examples(conn, matched).items():
+        print(f"no employee-count match for {label}; candidate sentences: {examples}")
 
 
 def _models(arg: str | None) -> list[str] | None:

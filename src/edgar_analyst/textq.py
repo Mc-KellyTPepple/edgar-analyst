@@ -13,7 +13,7 @@ import sqlite3
 
 _EMP = re.compile(
     r"\b(?:had|employed|employs)\s+(?:a total of |approximately |about |over |more than |roughly )*"
-    r"(\d{1,3}(?:,\d{3})+|\d{3,7})\s+(?:full[- ]time(?: equivalent)?,? |regular |permanent )?(?:employees|people|team members)",
+    r"(\d{1,3}(?:,\d{3})+|\d{3,7})\s+(?:full[- ]time(?: and part[- ]time)?(?: equivalent)?,? |regular |permanent )?(?:employees|people|team members)",
     re.I,
 )
 
@@ -27,6 +27,20 @@ def employee_facts(text: str):
         return None
     quote = text[max(0, m.start() - 120): m.end() + 80].replace("\n", " ").strip()
     return value, quote
+
+
+def unmatched_examples(text_conn: sqlite3.Connection, matched: set[str], limit: int = 2) -> dict[str, list[str]]:
+    """For filings with no employee-count match, show sentences that mention employees with a number (to tune the pattern)."""
+    out: dict[str, list[str]] = {}
+    for ticker, accession, period_end, text in text_conn.execute(
+            "SELECT ticker, accession, period_end, text FROM chunks WHERE item IN ('1', 'all') ORDER BY ticker, period_end, id"):
+        if accession in matched:
+            continue
+        label = f"{ticker} {period_end}"
+        for m in re.finditer(r"[^.\n]{0,100}\b\d{1,3}(?:,\d{3})+\b[^.\n]{0,40}\b(?:employees|people|team members)\b[^.\n]{0,40}", text):
+            if len(out.setdefault(label, [])) < limit:
+                out[label].append(m.group(0).strip())
+    return {k: v for k, v in out.items() if v}
 
 
 def generate_text_questions(text_conn: sqlite3.Connection, names: dict[str, str]) -> list[dict]:

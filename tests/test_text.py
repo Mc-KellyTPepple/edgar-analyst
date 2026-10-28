@@ -147,6 +147,7 @@ class TextQuestionTests(unittest.TestCase):
         self.assertEqual(employee_facts("As of December 31, 2023, we had 140,473 employees worldwide")[0], 140473)
         self.assertEqual(employee_facts("the Company had approximately 164,000 full-time equivalent employees")[0], 164000)
         self.assertEqual(employee_facts("we employed about 1,200 people")[0], 1200)
+        self.assertEqual(employee_facts("we employed approximately 1,556,000 full-time and part-time employees")[0], 1556000)
         self.assertIsNone(employee_facts("we had 12 employees"))
         self.assertIsNone(employee_facts("our employees are talented"))
 
