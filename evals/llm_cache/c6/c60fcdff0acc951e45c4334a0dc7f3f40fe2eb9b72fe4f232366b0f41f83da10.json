@@ -1,0 +1,1 @@
+{"message": {"content": "FINAL ANSWER: 50,475.0  \nSOURCES: 0001326801-25-000017", "role": "assistant"}, "model": "openai/gpt-oss-20b", "usage": {"completion_tokens": 53, "prompt_tokens": 588}}
