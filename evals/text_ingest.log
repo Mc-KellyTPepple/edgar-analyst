@@ -1,4 +1,4 @@
-[0;93m2026-10-28 08:03:21.099423494 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
+[0;93m2026-10-28 08:17:28.730835995 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
 NVDA 2026-01-25: 1921 KB html, sections {'1': 48301, '1A': 114868, '7': 34936}, 123 chunks
 NVDA 2025-01-26: 2019 KB html, sections {'1': 54849, '1A': 110840, '7': 38642}, 123 chunks
 NVDA 2024-01-28: 2036 KB html, sections {'1': 51655, '1A': 106849, '7': 41103}, 123 chunks
@@ -29,16 +29,14 @@ ORCL 2026-05-31: 6712 KB html, sections {'1': 56274, '1A': 101698, '7': 65317}, 
 ORCL 2025-05-31: 6396 KB html, sections {'1': 58298, '1A': 78310, '7': 73651}, 123 chunks
 ORCL 2024-05-31: 5196 KB html, sections {'1': 64008, '1A': 77150, '7': 72118}, 122 chunks
 Fetching 5 files:   0%|          | 0/5 [00:00<?, ?it/s]Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
-Fetching 5 files:  20%|██        | 1/5 [00:00<00:00,  7.02it/s]Fetching 5 files: 100%|██████████| 5/5 [00:01<00:00,  2.52it/s]Fetching 5 files: 100%|██████████| 5/5 [00:01<00:00,  2.62it/s]
+Fetching 5 files:  20%|██        | 1/5 [00:00<00:00,  6.90it/s]Fetching 5 files: 100%|██████████| 5/5 [00:01<00:00,  3.36it/s]Fetching 5 files: 100%|██████████| 5/5 [00:01<00:00,  3.47it/s]
 wrote /home/runner/work/edgar-analyst/edgar-analyst/data/text.db: 3979 chunks, dense=yes
 sections not found (parser may need work):
   INTC 2025-12-27 missing ['1', '1A', '7']
   INTC 2024-12-28 missing ['1', '1A', '7']
   INTC 2023-12-30 missing ['1', '1A', '7']
-wrote 21 text questions to /home/runner/work/edgar-analyst/edgar-analyst/evals/text_questions.jsonl
+wrote 23 text questions to /home/runner/work/edgar-analyst/edgar-analyst/evals/text_questions.jsonl
 no employee-count match for INTC 2023-12-30; candidate sentences: ['We invest in our highly skilled workforce of 124,800 people (as of December 30, 2023) by creating p']
 no employee-count match for INTC 2024-12-28; candidate sentences: ['We invest in our highly skilled workforce, which was comprised of 108,900 people as of December 28, 2024, by creating pr']
-no employee-count match for META 2024-12-31; candidate sentences: ['We had a global workforce of 74,067 employees as of December 31, 2024, and we have of']
-no employee-count match for META 2025-12-31; candidate sentences: ['We had a global workforce of 78,865 employees as of December 31, 2025, and we have of']
 no employee-count match for TSLA 2024-12-31; candidate sentences: ['In 2024, over 13,000 of our employees worldwide, 80% of whom represent Tesla’']
 no employee-count match for TSLA 2025-12-31; candidate sentences: ['Hiring, evaluation, and promotion decisions are based on skills and performance, with over 29,000 employees globally advancing their careers in 202']
