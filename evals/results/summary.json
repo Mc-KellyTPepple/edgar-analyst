@@ -58,7 +58,7 @@
       "openai/gpt-oss-120b",
       "openai/gpt-oss-20b"
     ],
-    "p95_seconds": 58.8,
+    "p95_seconds": 58.2,
     "questions": 187,
     "retrieval_hit_rate": 0.0
   },
