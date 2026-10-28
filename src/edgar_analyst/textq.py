@@ -12,7 +12,7 @@ import re
 import sqlite3
 
 _EMP = re.compile(
-    r"\b(?:had|employed|employs)\s+(?:a total of |approximately |about |over |more than |roughly )*"
+    r"\b(?:had|employed|employs)\s+(?:a total of |a global workforce of |approximately |about |over |more than |roughly )*"
     r"(\d{1,3}(?:,\d{3})+|\d{3,7})\s+(?:full[- ]time(?: and part[- ]time)?(?: equivalent)?,? |regular |permanent )?(?:employees|people|team members)",
     re.I,
 )
