@@ -19,7 +19,8 @@
    "requests": 6
   },
   "openai/gpt-oss-20b": {
-   "requests": 181
+   "exhausted": true,
+   "requests": 184
   }
  }
 }
