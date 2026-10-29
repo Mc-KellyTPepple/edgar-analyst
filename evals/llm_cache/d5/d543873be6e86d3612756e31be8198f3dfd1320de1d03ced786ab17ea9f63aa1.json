@@ -1,0 +1,1 @@
+{"message": {"content": "FINAL ANSWER: META\nSOURCES: 0000002488-26-000018, 0001628280-26-003942", "role": "assistant"}, "model": "openai/gpt-oss-120b", "usage": {"completion_tokens": 60, "prompt_tokens": 1024}}

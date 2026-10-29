@@ -1,0 +1,1 @@
+{"message": {"role": "assistant", "tool_calls": [{"function": {"arguments": "{\"as_of\":\"2024-06-30\",\"ratio\":\"net_margin\",\"ticker\":\"ORCL\"}", "name": "financial_ratio"}, "id": "fc_2a0a9f3b-3472-4231-aed5-269abb4e48b3", "type": "function"}]}, "model": "openai/gpt-oss-20b", "usage": {"completion_tokens": 41, "prompt_tokens": 921}}
