@@ -68,7 +68,7 @@ TOOL_SEARCH = {"type": "function", "function": {
     "name": "search_filings",
     "description": "Search the text of 10-K filings. Returns the best passages with their accession numbers.",
     "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "ticker": {"type": "string"},
-                                                    "year": {"type": "string", "description": "fiscal year end year, e.g. 2024"}},
+                                                    "year": {"type": ["string", "integer"], "description": "fiscal year end year, e.g. 2024"}},
                    "required": ["query"]}}}
 FACT_TOOLS = [TOOL_RATIO, TOOL_LOOKUP, TOOL_QUERY, TOOL_CALC]
 FULL_TOOLS = FACT_TOOLS + [TOOL_SEARCH]
@@ -194,7 +194,7 @@ def _flatten(llm, system: str, question: str, messages: list, max_tokens: int = 
     notes = [m["content"][:1500] for m in messages if m.get("role") == "tool"][-6:]
     prompt = (f"{question}\n\nData retrieved so far:\n" + "\n---\n".join(notes)
               + "\n\nAnswer now using only this data. End with the FINAL ANSWER and SOURCES lines "
-                "(accession numbers exactly as shown above), or say you cannot answer.")
+                "(accession numbers exactly as shown above). Say you cannot answer only if a needed figure is missing from this data.")
     return llm.chat([{"role": "system", "content": system}, {"role": "user", "content": prompt}],
                     max_tokens=max_tokens, temperature=temperature)
 
@@ -276,7 +276,8 @@ def _agent(llm, question: str, conn, system: str, tools: list, search=None, max_
             trace.append({"tool": tc["function"]["name"], "args": tc["function"].get("arguments", "")[:200], "out": out[:240]})
             messages.append({"role": "tool", "tool_call_id": tc["id"], "content": out[:3500]})
         if step == max_steps - 2:
-            messages.append({"role": "user", "content": "Out of steps. Give your best FINAL ANSWER and SOURCES now, or say you cannot answer."})
+            messages.append({"role": "user", "content": "Out of tool steps. Using the figures already returned above, give your FINAL ANSWER and SOURCES now. "
+                                                "Say you cannot answer only if a needed figure was never returned by a tool."})
     return {"prompt_version": PROMPT_VERSION, "text": text, "steps": steps, "tool_calls": tool_calls, "model": model, "calls": calls,
             "prompt_tokens": prompt, "completion_tokens": completion, "retrieved": retrieved, "seen_accessions": sorted(seen),
             "trace": trace[:10]}
