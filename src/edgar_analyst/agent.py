@@ -241,6 +241,7 @@ def _agent(llm, question: str, conn, system: str, tools: list, search=None, max_
     tool_calls = prompt = completion = calls = 0
     model = ""
     retrieved: list[str] = []
+    trace: list[dict] = []
     seen: set[str] = set()
     text = ""
     steps = max_steps
@@ -272,11 +273,13 @@ def _agent(llm, question: str, conn, system: str, tools: list, search=None, max_
             except json.JSONDecodeError:
                 out = "error: tool arguments were not valid JSON"
             seen.update(_ACCESSION.findall(out))
+            trace.append({"tool": tc["function"]["name"], "args": tc["function"].get("arguments", "")[:200], "out": out[:240]})
             messages.append({"role": "tool", "tool_call_id": tc["id"], "content": out[:3500]})
         if step == max_steps - 2:
             messages.append({"role": "user", "content": "Out of steps. Give your best FINAL ANSWER and SOURCES now, or say you cannot answer."})
     return {"prompt_version": PROMPT_VERSION, "text": text, "steps": steps, "tool_calls": tool_calls, "model": model, "calls": calls,
-            "prompt_tokens": prompt, "completion_tokens": completion, "retrieved": retrieved, "seen_accessions": sorted(seen)}
+            "prompt_tokens": prompt, "completion_tokens": completion, "retrieved": retrieved, "seen_accessions": sorted(seen),
+            "trace": trace[:10]}
 
 
 def run_facts_agent(llm, question: str, conn, max_steps: int = 8, **_) -> dict:

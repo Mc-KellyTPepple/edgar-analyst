@@ -97,6 +97,8 @@ class AgentTests(unittest.TestCase):
         r = run_facts_agent(llm, "q?", self.conn)
         self.assertEqual((r["steps"], r["tool_calls"], r["calls"]), (3, 2, 3))
         self.assertEqual(r["prompt_tokens"], 300)
+        self.assertEqual([t["tool"] for t in r["trace"]], ["query_facts", "calculate"])
+        self.assertEqual(r["trace"][1]["out"], "4")
         tool_msgs = [m for m in llm.calls[2]["messages"] if m["role"] == "tool"]
         self.assertEqual(len(tool_msgs), 2)
 
