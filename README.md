@@ -138,6 +138,22 @@ What the numbers say:
 - **What is left:** 2 of 40 comparison questions per agent. Three of those four were answered by the smaller `gpt-oss-20b` model after the larger
   one's daily quota ran out, and it declined even though the lookups had returned the figures. A re-run on the 120b model should clear them.
 
+**Held-out check.** The 187 questions above were used to find and fix failures, so their scores are tuned-on numbers. To measure
+generalisation, a second set was generated with a different seed and every question that also appears in the main set removed.
+Held-out set 1 (66 answerable questions: 16 lookups, 29 ratios/growth, 21 comparisons; no refusal questions) was run once on the then-current agents:
+
+| system | lookup | multi-step | comparison | all 66 |
+|---|---|---|---|---|
+| facts agent | 100% | 86.2% | 100% | 93.9% (62/66) |
+| full agent | 100% | 100% | 100% | 100% (66/66) |
+
+So the tuned-set scores overstate generalisation a little for the facts agent. Its 4 misses: two requests rejected by the API after the model
+asked for data the final digest step did not have, one ratio computed by hand from a half-remembered revenue figure with an invented source,
+and one growth question answered with a year. Fixes: a `financial_growth` tool, lookups that accept the nearest fiscal year and an optional
+period, clearer tool selection. Because set 1 was then used for fixing, it no longer counts as held-out; a fresh set 2 (seed 12, 89 questions, again excluding
+all earlier ones) is being run on the fixed agents, a day or two because of Groq's daily limits (the nightly job continues it). Neither held-out set contains refusal
+or text questions, and 66 questions leave wide error bars.
+
 Caveats: single run, no confidence intervals; every question now has an answer (no errors). The last 3 that Groq kept rejecting were completed by resampling malformed tool calls and raising the step budget from 6 to 8, so a few answers used a slightly different setup than the rest. Questions about figures come from the same database the agent queries, so tiers 1-3
 show correct tool use, not the ability to read filings; tier 4 is the step toward that but covers one question type (employee counts),
 and broader text questions would need a model-based grader. Answers come from `gpt-oss-120b`, with `gpt-oss-20b` taking over when the
