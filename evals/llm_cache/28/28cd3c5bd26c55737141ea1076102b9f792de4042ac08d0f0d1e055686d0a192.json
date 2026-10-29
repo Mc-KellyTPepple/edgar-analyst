@@ -1,0 +1,1 @@
+{"message": {"content": "I cannot answer.", "role": "assistant"}, "model": "openai/gpt-oss-20b", "usage": {"completion_tokens": 28, "prompt_tokens": 676}}
