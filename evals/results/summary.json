@@ -38,12 +38,12 @@
     },
     "by_model": {
       "openai/gpt-oss-120b": {
-        "accuracy": 60.3,
-        "n": 63
+        "accuracy": 61.3,
+        "n": 62
       },
       "openai/gpt-oss-20b": {
-        "accuracy": 100.0,
-        "n": 110
+        "accuracy": 99.1,
+        "n": 111
       }
     },
     "citation_precision": 100.0,
@@ -51,14 +51,14 @@
     "correct_refusal_rate": 100.0,
     "errors": 0,
     "false_refusal_rate": 0.7,
-    "mean_llm_calls": 2.87,
-    "mean_tokens": 2051,
-    "mean_tool_calls": 1.87,
+    "mean_llm_calls": 2.88,
+    "mean_tokens": 2069,
+    "mean_tool_calls": 1.88,
     "models": [
       "openai/gpt-oss-120b",
       "openai/gpt-oss-20b"
     ],
-    "p95_seconds": 58.43,
+    "p95_seconds": 58.31,
     "questions": 187,
     "retrieval_hit_rate": 0.0
   },
