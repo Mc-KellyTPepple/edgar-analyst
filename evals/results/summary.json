@@ -51,14 +51,14 @@
     "correct_refusal_rate": 100.0,
     "errors": 0,
     "false_refusal_rate": 0.7,
-    "mean_llm_calls": 2.87,
-    "mean_tokens": 2052,
-    "mean_tool_calls": 1.87,
+    "mean_llm_calls": 2.91,
+    "mean_tokens": 2117,
+    "mean_tool_calls": 1.91,
     "models": [
       "openai/gpt-oss-120b",
       "openai/gpt-oss-20b"
     ],
-    "p95_seconds": 58.31,
+    "p95_seconds": 58.43,
     "questions": 187,
     "retrieval_hit_rate": 0.0
   },
