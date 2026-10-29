@@ -169,6 +169,13 @@ def _chat(llm, messages: list, tools, max_tokens: int, fallback=None) -> dict:
     except LLMError as exc:
         if not _is_recoverable(exc) or fallback is None:
             raise
+    if tools is not None:
+        # resample the same step first: on the very first step there is no tool data to build a digest from
+        try:
+            return llm.chat(messages, tools=tools, max_tokens=max_tokens, temperature=0.4)
+        except LLMError as exc:
+            if not _is_recoverable(exc):
+                raise
     try:
         return fallback(0.0)
     except LLMError as exc:

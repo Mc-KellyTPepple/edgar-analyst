@@ -93,8 +93,8 @@ class AgentTests(unittest.TestCase):
 
     def test_malformed_tool_call_finishes_from_a_flat_digest(self):
         from edgar_analyst.llm import LLMError
-        llm = ScriptedLLM(reply(calls=[("calculate", {"expression": "2+2"})]),
-                          LLMError('Groq returned 400: {"code": "tool_use_failed"}'), reply("FINAL ANSWER: 4"))
+        bad = LLMError('Groq returned 400: {"code": "tool_use_failed"}')
+        llm = ScriptedLLM(reply(calls=[("calculate", {"expression": "2+2"})]), bad, bad, reply("FINAL ANSWER: 4"))
         r = run_facts_agent(llm, "q?", self.conn)
         self.assertIn("FINAL ANSWER", r["text"])
         flat = llm.calls[2]["messages"]
@@ -115,6 +115,13 @@ class AgentTests(unittest.TestCase):
         llm = ScriptedLLM(LLMError("Groq returned 401: invalid key"))
         with self.assertRaises(LLMError):
             run_facts_agent(llm, "q?", self.conn)
+
+    def test_malformed_tool_call_is_resampled_first(self):
+        from edgar_analyst.llm import LLMError
+        llm = ScriptedLLM(LLMError('Groq returned 400: {"code": "tool_use_failed"}'), reply("FINAL ANSWER: 7"))
+        r = run_facts_agent(llm, "q?", self.conn)
+        self.assertEqual(r["text"], "FINAL ANSWER: 7")
+        self.assertIsNotNone(llm.calls[1]["tools"])   # same step again with tools, not the flat digest
 
     def test_last_step_uses_flat_digest(self):
         loop = [reply(calls=[("calculate", {"expression": "1+1"})]) for _ in range(5)] + [reply("FINAL ANSWER: 2")]
