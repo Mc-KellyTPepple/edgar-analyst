@@ -1,0 +1,1 @@
+{"message": {"content": "FINAL ANSWER: AMD  \nSOURCES: 0000002488-26-000018, 0001652044-26-000018", "role": "assistant"}, "model": "openai/gpt-oss-20b", "usage": {"completion_tokens": 65, "prompt_tokens": 910}}

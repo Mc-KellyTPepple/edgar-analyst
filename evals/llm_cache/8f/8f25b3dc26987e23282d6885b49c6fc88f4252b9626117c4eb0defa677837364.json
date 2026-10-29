@@ -1,0 +1,1 @@
+{"message": {"role": "assistant", "tool_calls": [{"function": {"arguments": "{\"metric\":\"net_income\",\"period_end\":\"2022-09-24\",\"ticker\":\"AAPL\"}", "name": "lookup_fact"}, "id": "fc_0165e9db-729d-4fa3-9762-c62fc9d47fb1", "type": "function"}]}, "model": "openai/gpt-oss-120b", "usage": {"completion_tokens": 70, "prompt_tokens": 678}}
