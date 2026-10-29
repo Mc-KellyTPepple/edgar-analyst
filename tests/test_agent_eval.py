@@ -178,6 +178,13 @@ class AgentTests(unittest.TestCase):
         self.assertIsNone(llm.calls[-1]["tools"])
         self.assertTrue(all(m["role"] in ("system", "user") for m in llm.calls[-1]["messages"]))
 
+    def test_calculator_error_is_not_a_grounded_refusal(self):
+        llm = ScriptedLLM(reply(calls=[("calculate", {"expression": "(1/??)"})]), reply("I cannot answer."),
+                          reply(calls=[("lookup_fact", {"ticker": "ALPH", "metric": "revenue", "period_end": "2024"})]), reply("FINAL ANSWER: 2400"))
+        r = run_facts_agent(llm, "q?", self.conn)
+        self.assertTrue(r["challenged"])
+        self.assertEqual(r["text"], "FINAL ANSWER: 2400")
+
     def test_closed_book_has_no_tools(self):
         llm = ScriptedLLM(reply("FINAL ANSWER: 5"))
         r = run_closed_book(llm, "q?")
@@ -258,13 +265,6 @@ class RunnerTests(unittest.TestCase):
                  None, self.out, progress=lambda *_: None)
         self.assertEqual(drop_tier_results(self.out, self.out.parent / "a.jsonl", set(), {"b"}), 1)
         self.assertEqual(sorted(load_results(self.out)), ["a", "c"])
-
-    def test_calculator_error_is_not_a_grounded_refusal(self):
-        llm = ScriptedLLM(reply(calls=[("calculate", {"expression": "(1/??)"})]), reply("I cannot answer."),
-                          reply(calls=[("lookup_fact", {"ticker": "ALPH", "metric": "revenue", "period_end": "2024"})]), reply("FINAL ANSWER: 2400"))
-        r = run_facts_agent(llm, "q?", self.conn)
-        self.assertTrue(r["challenged"])
-        self.assertEqual(r["text"], "FINAL ANSWER: 2400")
 
     def test_tier_filter_and_limit(self):
         llm = ScriptedLLM(reply("FINAL ANSWER: 1"))

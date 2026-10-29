@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 import sys
+from pathlib import Path
 
 from . import config
 from .db import build_db, open_readonly
@@ -46,10 +47,18 @@ def cmd_build_db(args) -> None:
 
 def cmd_gen_questions(args) -> None:
     conn = open_readonly(config.DB_PATH)
-    qs = generate(conn, seed=args.seed)
-    write_jsonl(qs, config.QUESTIONS_PATH)
+    sizes = [int(x) for x in args.sizes.split(",")] if args.sizes else None
+    kw = dict(zip(("n_t1", "n_t2", "n_t3", "n_abstain"), sizes)) if sizes else {}
+    qs = generate(conn, seed=args.seed, **kw)
+    if args.exclude:
+        from .evalrun import load_questions
+
+        seen = {q["id"] for q in load_questions(Path(args.exclude))}
+        qs = [q for q in qs if q["id"] not in seen]
+    out = Path(args.out) if args.out else config.QUESTIONS_PATH
+    write_jsonl(qs, out)
     print(summarize(qs))
-    print(f"wrote {config.QUESTIONS_PATH}")
+    print(f"wrote {out}")
 
 
 def cmd_ingest_text(args) -> None:
@@ -118,7 +127,7 @@ def cmd_run_eval(args) -> None:
         print(f"retrieval mode: {index.mode}")
         extras["search"] = lambda q, ticker=None, year=None: index.search(q, k=4, ticker=ticker, year=year)
     tiers = {int(t) for t in args.tiers.split(",")} if args.tiers else None
-    out = config.RESULTS_DIR / f"{args.system}.jsonl"
+    out = config.RESULTS_DIR / f"{args.system}{'_heldout' if args.set == 'heldout' else ''}.jsonl"
     if args.redo_tiers or args.redo_ids:
         from .evalrun import drop_tier_results
 
@@ -133,7 +142,9 @@ def cmd_run_eval(args) -> None:
         redo_tiers = {1, 2, 3} if args.system == "facts_agent" else {1, 2, 3, 4}
         n = drop_false_refusals(out, config.RESULTS_DIR / "archive" / f"{args.system}_false_refusals_v2.jsonl", redo_tiers)
         print(f"re-running {n} wrongly declined questions (old answers archived)")
-    summary = run_eval(load_questions(config.QUESTIONS_PATH, config.TEXT_QUESTIONS_PATH), args.system, llm, conn, out,
+    questions = (load_questions(config.HELDOUT_QUESTIONS_PATH) if args.set == "heldout"
+                 else load_questions(config.QUESTIONS_PATH, config.TEXT_QUESTIONS_PATH))
+    summary = run_eval(questions, args.system, llm, conn, out,
                        tiers=tiers, limit=args.limit, **extras)
     u = llm.usage
     print(f"{args.system}: attempted {summary['attempted']}, remaining {summary['remaining']}; "
@@ -162,16 +173,17 @@ def cmd_report(args) -> None:
     from .evalrun import check_gate, load_results, markdown_table, summarize_results
 
     summaries = {}
+    suffix = "_heldout" if args.set == "heldout" else ""
     for name in SYSTEMS:
-        rows = list(load_results(config.RESULTS_DIR / f"{name}.jsonl").values())
+        rows = list(load_results(config.RESULTS_DIR / f"{name}{suffix}.jsonl").values())
         if rows:
             summaries[name] = summarize_results(rows)
     if not summaries:
         sys.exit("no results yet: run `run-eval` first")
     config.RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    (config.RESULTS_DIR / "summary.json").write_text(json.dumps(summaries, indent=2, sort_keys=True))
+    (config.RESULTS_DIR / f"summary{suffix}.json").write_text(json.dumps(summaries, indent=2, sort_keys=True))
     table = markdown_table(summaries)
-    (config.RESULTS_DIR / "RESULTS.md").write_text(table + "\n")
+    (config.RESULTS_DIR / f"RESULTS{suffix}.md").write_text(table + "\n")
     print(table)
     if args.gate_system:
         problems = check_gate(summaries.get(args.gate_system, {}), args.min_accuracy, args.min_refusal)
@@ -192,6 +204,9 @@ def main(argv=None) -> None:
     b.set_defaults(fn=cmd_build_db)
     c = sub.add_parser("gen-questions", help="generate evals/questions.jsonl")
     c.add_argument("--seed", type=int, default=7)
+    c.add_argument("--out", help="output file (default evals/questions.jsonl)")
+    c.add_argument("--exclude", help="drop questions whose id is already in this file (for a held-out set)")
+    c.add_argument("--sizes", help="tier sizes n_t1,n_t2,n_t3,n_abstain")
     c.set_defaults(fn=cmd_gen_questions)
     from .agent import SYSTEMS
     f = sub.add_parser("ingest-text", help="download 10-K documents and build data/text.db (BM25 + embeddings)")
@@ -206,6 +221,7 @@ def main(argv=None) -> None:
     d.add_argument("--max-requests", type=int, default=None, help="network requests allowed in this run")
     d.add_argument("--tiers", help="e.g. 1,2 (default: all)")
     d.add_argument("--limit", type=int, default=None, help="questions to attempt in this run")
+    d.add_argument("--set", choices=["main", "heldout"], default="main", help="question set; heldout was never used for tuning")
     d.add_argument("--redo-tiers", help="archive and re-run these tiers, e.g. 3")
     d.add_argument("--redo-ids", help="archive and re-run these question ids (comma separated)")
     d.add_argument("--redo-refusals", action="store_true", help="re-run only answerable questions that were wrongly declined")
@@ -216,6 +232,7 @@ def main(argv=None) -> None:
     h.add_argument("--systems", nargs="+", default=["full_agent", "facts_agent"])
     h.set_defaults(fn=cmd_pending)
     e = sub.add_parser("report", help="summarize results; optionally enforce a quality gate")
+    e.add_argument("--set", choices=["main", "heldout"], default="main")
     e.add_argument("--gate-system")
     e.add_argument("--min-accuracy", type=float, default=60.0)
     e.add_argument("--min-refusal", type=float, default=None)

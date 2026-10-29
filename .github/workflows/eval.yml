@@ -30,6 +30,11 @@ on:
         description: "Archive and re-run whole tiers, e.g. 3 (empty = none)"
         required: false
         default: ""
+      question_set:
+        description: "main (tuned on) or heldout (never used for tuning; generated once with a different seed)"
+        type: choice
+        options: [main, heldout]
+        default: main
       redo_ids:
         description: "Archive and re-run these question ids (comma separated)"
         required: false
@@ -85,6 +90,11 @@ jobs:
         run: |
           python -m edgar_analyst ingest
           python -m edgar_analyst build-db
+      - name: Held-out questions (generated once, then committed)
+        if: inputs.question_set == 'heldout'
+        run: |
+          [ -f evals/heldout_questions.jsonl ] || python -m edgar_analyst gen-questions --seed 11 \
+            --out evals/heldout_questions.jsonl --exclude evals/questions.jsonl --sizes 25,40,40,10
       - name: Build text index (full_agent only)
         if: steps.pending.outputs.n != '0' && (inputs.system == 'full_agent' || github.event_name == 'schedule')
         run: |
@@ -98,7 +108,7 @@ jobs:
             python -m edgar_analyst run-eval --system facts_agent --max-requests 900
             exit 0
           fi
-          args="--system ${{ inputs.system }} --max-requests ${{ inputs.max_requests }}"
+          args="--system ${{ inputs.system }} --max-requests ${{ inputs.max_requests }} --set ${{ inputs.question_set || 'main' }}"
           [ -z "${{ inputs.redo_tiers }}" ] || args="$args --redo-tiers ${{ inputs.redo_tiers }}"
           [ -z "${{ inputs.redo_ids }}" ] || args="$args --redo-ids ${{ inputs.redo_ids }}"
           [ "${{ inputs.redo_refusals }}" != "true" ] || args="$args --redo-refusals"
@@ -107,12 +117,12 @@ jobs:
           python -m edgar_analyst run-eval $args
       - name: Report
         if: always() && steps.pending.outputs.n != '0'
-        run: python -m edgar_analyst report | tee -a "$GITHUB_STEP_SUMMARY"
+        run: python -m edgar_analyst report --set ${{ inputs.question_set || 'main' }} | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Commit results
         if: always() && steps.pending.outputs.n != '0'
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
-          git add evals/results evals/llm_cache evals/groq_ledger.json
+          git add evals/results evals/llm_cache evals/groq_ledger.json evals/heldout_questions.jsonl
           git diff --cached --quiet || git commit -m "Evaluation results"
           git pull --rebase -X theirs && git push
