@@ -1,0 +1,1 @@
+{"message": {"role": "assistant", "tool_calls": [{"function": {"arguments": "{\"sql\":\"SELECT * FROM financials WHERE ticker='INTC' AND metric='rd_expense' AND period_end='2023-12-30';\"}", "name": "query_facts"}, "id": "fc_2ab65f75-6abd-477d-b01b-2f7d56eb031d", "type": "function"}]}, "model": "openai/gpt-oss-20b", "usage": {"completion_tokens": 69, "prompt_tokens": 1124}}

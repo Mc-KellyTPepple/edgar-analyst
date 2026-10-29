@@ -1,0 +1,1 @@
+{"message": {"role": "assistant", "tool_calls": [{"function": {"arguments": "{\"metric\":\"rd_expense\",\"period_end\":\"2023-12-31\",\"ticker\":\"INTC\"}", "name": "lookup_fact"}, "id": "fc_047321c7-4b55-4364-9791-ba267c1521e2", "type": "function"}]}, "model": "openai/gpt-oss-20b", "usage": {"completion_tokens": 62, "prompt_tokens": 823}}
