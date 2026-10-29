@@ -23,3 +23,5 @@ jobs:
         # Checks the stored evaluation results, so it costs no API calls. It fails the build if the
         # recorded accuracy or refusal rate of the facts agent drops below the thresholds.
         run: PYTHONPATH=src python -m edgar_analyst report --gate-system facts_agent --min-accuracy 85 --min-refusal 95
+      - name: Evaluation quality gate, full agent
+        run: PYTHONPATH=src python -m edgar_analyst report --gate-system full_agent --min-accuracy 85 --min-refusal 95

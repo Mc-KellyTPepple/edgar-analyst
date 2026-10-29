@@ -97,7 +97,7 @@ repository variable to your email first).
 - [x] Groq client and evaluation harness (facts-only agent: SQL plus calculator), awaiting first run
 - [x] Week 2: third tool (text search over filing sections) added to the agent (`full_agent`)
 - [x] Week 3: full evaluation runs (closed book vs facts agent vs full agent) and a quality gate in CI (on stored results)
-- [ ] Next: tier 3 failures, a clean single-prompt, 120b-only rerun, then reranking
+- [ ] Next: a clean single-version 120b-only rerun of all tiers, then reranking and broader text questions
 - [ ] Week 4: tracing and cost dashboard; Docker; AWS deployment with Terraform
 - [ ] Week 5-6: load test, write-up with failure cases, demo video
 
@@ -110,8 +110,8 @@ graded automatically. Raw responses are in `evals/results/`; the first-run resul
 | system | tier 1 lookup | tier 2 multi-step | tier 3 comparison | tier 4 filing text | answerable (1-3) | correct refusals (tier 0) | false refusals | citation recall | citation precision | retrieval hit |
 |---|---|---|---|---|---|---|---|---|---|---|
 | closed book (model memory) | 10.0% | 8.3% | 40.0% | - | 17.3% | 71.4% | 37.3% | n/a | n/a | n/a |
-| facts agent (SQL + lookup + calculator) | 100% | 100% | 85.0% | 0.0% | 96.0% | 100% | 2.7% | 96.0% | 100% | n/a |
-| full agent (+ filing search) | 100% | 100% | 72.5% | 82.6% | 92.7% | 100% | 3.3% | 94.1% | 100% | 91.3% |
+| facts agent (ratio + lookup + SQL + calculator) | 100% | 100% | 95.0% | 0.0% | 98.7% | 100% | 0.7% | 98.7% | 100% | n/a |
+| full agent (+ filing search) | 100% | 100% | 95.0% | 82.6% | 98.7% | 100% | 1.3% | 98.4% | 100% | 91.3% |
 
 What the numbers say:
 
@@ -128,14 +128,21 @@ What the numbers say:
   prompt that requires a lookup before any refusal (v3) raised it to 92.7% and cut false refusals to 3.3%. The re-run answers are tagged
   `prompt_version: v3` in the results; the original answers are in `evals/results/archive/*_false_refusals_v2.jsonl`. Only the
   previously declined questions were re-run, so the rest of each run used the v2 prompt.
-- **Tier 3 is still the hardest** (comparisons need two lookups and a judgement): 72.5% (full agent) and 85.0% (facts agent). Some of the remaining misses are
-  wrong choices, not refusals.
+- **Comparison questions (tier 3) went from 85.0% / 72.5% to 95.0% / 95.0%** (facts / full agent). Process: read every failing answer
+  and its tool trace, group the causes, fix each at the right layer, re-run only the affected questions.
+  Causes found: (1) wrong fiscal year chosen when companies' years end on different dates, (2) several lookups followed by a refusal or an
+  empty reply, (3) arithmetic spread over many model steps, (4) a hidden API problem: the model passed `year` as an integer, the tool schema
+  said string, and Groq rejected the whole request as `tool_use_failed`. Fixes: a `financial_ratio(ticker, ratio, as_of)` tool that picks each
+  company's nearest fiscal year, divides, and returns the accessions; recovery from empty replies; a permissive schema; a clearer
+  out-of-steps instruction; tool-call traces stored with every answer so failures can be diagnosed.
+- **What is left:** 2 of 40 comparison questions per agent. Three of those four were answered by the smaller `gpt-oss-20b` model after the larger
+  one's daily quota ran out, and it declined even though the lookups had returned the figures. A re-run on the 120b model should clear them.
 
 Caveats: single run, no confidence intervals; every question now has an answer (no errors). The last 3 that Groq kept rejecting were completed by resampling malformed tool calls and raising the step budget from 6 to 8, so a few answers used a slightly different setup than the rest. Questions about figures come from the same database the agent queries, so tiers 1-3
 show correct tool use, not the ability to read filings; tier 4 is the step toward that but covers one question type (employee counts),
 and broader text questions would need a model-based grader. Answers come from `gpt-oss-120b`, with `gpt-oss-20b` taking over when the
-daily quota ran out; the facts agent's tier 1-2 answers were mostly produced by the 20b model, so a clean 120b-only run could
-differ. The report has a per-model table. Retrieval is not reranked, and Intel's 10-K is indexed as unsectioned text.
+daily quota ran out. Tiers 1-2 and the text questions come from earlier prompt versions (`prompt_version` in each record: v2, v3, v4);
+only tier 3 and the previously refused questions were re-run with the newest one, so a clean single-version, 120b-only run could differ. The report has a per-model table. Retrieval is not reranked, and Intel's 10-K is indexed as unsectioned text.
 
 The CI workflow replays these stored results through a quality gate (facts agent: at least 85% answerable accuracy and 95% correct
 refusals), so a change that breaks the recorded numbers fails the build. It does not call the API.
