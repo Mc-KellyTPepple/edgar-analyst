@@ -26,6 +26,10 @@ on:
       max_requests:
         description: "Max Groq requests this run (free-tier daily limits apply)"
         default: "400"
+      redo_tiers:
+        description: "Archive and re-run whole tiers, e.g. 3 (empty = none)"
+        required: false
+        default: ""
       redo_refusals:
         description: "Re-run only the answerable questions that were wrongly declined"
         type: boolean
@@ -91,6 +95,7 @@ jobs:
             exit 0
           fi
           args="--system ${{ inputs.system }} --max-requests ${{ inputs.max_requests }}"
+          [ -z "${{ inputs.redo_tiers }}" ] || args="$args --redo-tiers ${{ inputs.redo_tiers }}"
           [ "${{ inputs.redo_refusals }}" != "true" ] || args="$args --redo-refusals"
           [ -z "${{ inputs.tiers }}" ] || args="$args --tiers ${{ inputs.tiers }}"
           [ -z "${{ inputs.models }}" ] || args="$args --models ${{ inputs.models }}"

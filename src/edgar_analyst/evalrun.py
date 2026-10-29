@@ -44,6 +44,20 @@ def drop_false_refusals(path: Path, archive_path: Path, tiers: set[int]) -> int:
     return len(drop)
 
 
+def drop_tier_results(path: Path, archive_path: Path, tiers: set[int]) -> int:
+    """Archive and remove the results of whole tiers so they are re-run (used after changing how those questions are answered)."""
+    results = load_results(path)
+    drop = {k for k, r in results.items() if r["tier"] in tiers}
+    if not drop:
+        return 0
+    archive_path = Path(archive_path)
+    archive_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(archive_path, "a", encoding="utf-8") as fh:
+        fh.writelines(json.dumps(results[k], sort_keys=True) + "\n" for k in sorted(drop))
+    Path(path).write_text("".join(json.dumps(r, sort_keys=True) + "\n" for k, r in results.items() if k not in drop), encoding="utf-8")
+    return len(drop)
+
+
 def run_eval(questions: list[dict], system: str, llm, conn, out_path: Path, tiers=None, limit: int | None = None,
              progress=print, **extras) -> dict:
     runner = SYSTEMS[system]

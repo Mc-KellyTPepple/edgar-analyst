@@ -64,6 +64,30 @@ class AgentTests(unittest.TestCase):
         self.assertIn("1005", out)
         self.assertTrue(run_tool("query_facts", {"sql": "DELETE FROM companies"}, self.conn).startswith("error"))
 
+    def test_financial_ratio_picks_nearest_fiscal_year(self):
+        # synthetic data: ALPH net income / revenue = 120/1000 (FY2020 restated revenue 1005), BETA fiscal year ends late January
+        out = run_tool("financial_ratio", {"ticker": "ALPH", "ratio": "net_margin", "as_of": "2021-01-15"}, self.conn)
+        self.assertIn("fiscal year ended 2020-12-31", out)
+        self.assertIn("accessions: 000", out)
+        beta = run_tool("financial_ratio", {"ticker": "beta", "ratio": "net_margin", "as_of": "2021-01-15"}, self.conn)
+        self.assertIn("fiscal year ended 2021-01-31", beta)
+        self.assertIn("%", beta)
+
+    def test_financial_ratio_generic_pair_and_errors(self):
+        ok = run_tool("financial_ratio", {"ticker": "ALPH", "ratio": "rd_expense/operating_income", "as_of": "2024-12-31"}, self.conn)
+        self.assertIn("rd_expense 340 / operating_income 720", ok)
+        far = run_tool("financial_ratio", {"ticker": "ALPH", "ratio": "net_margin", "as_of": "2030-01-01"}, self.conn)
+        self.assertIn("Available period_end dates", far)
+        self.assertTrue(run_tool("financial_ratio", {"ticker": "ALPH", "ratio": "bogus", "as_of": "2024-12-31"}, self.conn).startswith("error"))
+        self.assertTrue(run_tool("financial_ratio", {"ticker": "ALPH", "ratio": "net_margin", "as_of": "last year"}, self.conn).startswith("error"))
+        self.assertIn("not in the data", run_tool("financial_ratio", {"ticker": "ZZZ", "ratio": "net_margin", "as_of": "2024-12-31"}, self.conn))
+
+    def test_empty_final_reply_is_recovered_from_digest(self):
+        llm = ScriptedLLM(reply(calls=[("calculate", {"expression": "2+2"})]), reply(""), reply("FINAL ANSWER: 4"))
+        r = run_facts_agent(llm, "q?", self.conn)
+        self.assertIn("FINAL ANSWER: 4", r["text"])
+        self.assertEqual(r["calls"], 3)
+
     def test_agent_tool_loop(self):
         llm = ScriptedLLM(
             reply(calls=[("query_facts", {"sql": "SELECT value_musd FROM financials LIMIT 1"})]),
@@ -194,6 +218,15 @@ class RunnerTests(unittest.TestCase):
         s = run_eval(QS, "closed_book", ScriptedLLM(reply("FINAL ANSWER: 600")), None, self.out, progress=lambda *_: None)
         self.assertEqual((s["attempted"], s["remaining"]), (1, 0))
         self.assertEqual(drop_false_refusals(self.out, arch, {1, 2, 3}), 0)
+
+    def test_redo_tiers_archives_and_reruns(self):
+        from edgar_analyst.evalrun import drop_tier_results
+        run_eval(QS, "closed_book", ScriptedLLM(reply("FINAL ANSWER: 600"), reply("FINAL ANSWER: 2400"), reply("I cannot answer.")),
+                 None, self.out, progress=lambda *_: None)
+        arch = self.out.parent / "archive" / "prev.jsonl"
+        self.assertEqual(drop_tier_results(self.out, arch, {1}), 2)
+        self.assertEqual(list(load_results(self.out)), ["c"])
+        self.assertEqual(len(arch.read_text().splitlines()), 2)
 
     def test_tier_filter_and_limit(self):
         llm = ScriptedLLM(reply("FINAL ANSWER: 1"))

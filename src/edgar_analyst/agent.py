@@ -17,8 +17,9 @@ import re
 from .llm import LLMError
 from .db import QueryError, run_readonly_query
 from .facts import METRICS
+from .questions import RATIOS
 
-PROMPT_VERSION = "v3"   # v2: first full run; v3: no refusal before the data has been checked
+PROMPT_VERSION = "v4"   # v2: first full run; v3: no refusal before the data was checked; v4: financial_ratio tool
 METRIC_NAMES = ", ".join(METRICS)
 
 _RULES = f"""You answer questions about US public companies from a read-only SQLite database of annual (10-K) figures{{extra}}.
@@ -26,7 +27,8 @@ View: financials(ticker, name, metric, period_start, period_end, value, value_mu
 value_musd is US dollars in millions; period_end is the fiscal year end date; metric is one of: {METRIC_NAMES}.
 Rules:
 - Never guess a figure. Read each figure with lookup_fact (it returns the accession) or query_facts, and do all arithmetic with calculate.
-- Fiscal years differ by company, so match periods by period_end date.
+- For margins, R&D intensity or any numerator/denominator ratio, call financial_ratio(ticker, ratio, as_of) once per company and date: it picks the
+  fiscal year ending closest to as_of (fiscal years differ by company), does the division, and returns the accessions. Compare the returned numbers.
 {{more}}- Never say you cannot answer before you have used the tools. Look the figures up first, and decline only if the tools show the data is missing (no row, a period that has not been reported, a company or metric not in the data).
 - Finish with exactly two lines:
 FINAL ANSWER: <answer in the unit the question asks for>
@@ -51,6 +53,13 @@ TOOL_LOOKUP = {"type": "function", "function": {
     "description": "Get one reported figure with its accession number. period_end is a date (2024-12-31) or just a year (2024).",
     "parameters": {"type": "object", "properties": {"ticker": {"type": "string"}, "metric": {"type": "string"},
                                                     "period_end": {"type": "string"}}, "required": ["ticker", "metric", "period_end"]}}}
+TOOL_RATIO = {"type": "function", "function": {
+    "name": "financial_ratio",
+    "description": ("Ratio of two reported figures for the fiscal year ending closest to as_of (within 60 days). ratio is one of "
+                    + ", ".join(RATIOS) + ", or 'numerator/denominator' using metric names, e.g. capex/revenue. Returns the value in percent and accessions."),
+    "parameters": {"type": "object", "properties": {"ticker": {"type": "string"}, "ratio": {"type": "string"},
+                                                    "as_of": {"type": "string", "description": "a date like 2024-06-30"}},
+                   "required": ["ticker", "ratio", "as_of"]}}}
 TOOL_CALC = {"type": "function", "function": {
     "name": "calculate",
     "description": "Evaluate an arithmetic expression, e.g. (2400-1800)/1800*100. Supports + - * / ** % and round(), abs().",
@@ -61,7 +70,7 @@ TOOL_SEARCH = {"type": "function", "function": {
     "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "ticker": {"type": "string"},
                                                     "year": {"type": "string", "description": "fiscal year end year, e.g. 2024"}},
                    "required": ["query"]}}}
-FACT_TOOLS = [TOOL_LOOKUP, TOOL_QUERY, TOOL_CALC]
+FACT_TOOLS = [TOOL_RATIO, TOOL_LOOKUP, TOOL_QUERY, TOOL_CALC]
 FULL_TOOLS = FACT_TOOLS + [TOOL_SEARCH]
 TOOLS = FACT_TOOLS  # kept for callers that import it
 
@@ -114,6 +123,41 @@ def _lookup(conn, ticker: str, metric: str, period_end: str) -> str:
     return f"no {metric} figure for {ticker} at {period_end}. Available period_end dates: {', '.join(have) or 'none (ticker or metric not in the data)'}"
 
 
+def _days_between(a: str, b: str) -> int:
+    from datetime import date
+    return abs((date.fromisoformat(a) - date.fromisoformat(b)).days)
+
+
+def _ratio(conn, ticker: str, ratio: str, as_of: str, window_days: int = 60) -> str:
+    ticker, ratio = str(ticker).upper(), str(ratio).strip().lower()
+    if ratio in RATIOS:
+        num, den = RATIOS[ratio][1], RATIOS[ratio][2]
+    elif "/" in ratio:
+        num, den = (x.strip() for x in ratio.split("/", 1))
+    else:
+        return f"error: ratio must be one of {', '.join(RATIOS)} or numerator/denominator metrics"
+    if num not in METRICS or den not in METRICS:
+        return f"error: metrics must be among {METRIC_NAMES}"
+    try:
+        _days_between(as_of, as_of)
+    except ValueError:
+        return "error: as_of must be a date like 2024-06-30"
+    ends = [r[0] for r in conn.execute(
+        "SELECT a.period_end FROM financials a JOIN financials b ON a.ticker=b.ticker AND a.period_end=b.period_end "
+        "WHERE a.ticker=? AND a.metric=? AND b.metric=? ORDER BY a.period_end", (ticker, num, den))]
+    if not ends:
+        return f"no {num} and {den} figures for {ticker} in the same fiscal year (ticker or metrics not in the data)"
+    end = min(ends, key=lambda e: _days_between(e, as_of))
+    if _days_between(end, as_of) > window_days:
+        return f"no fiscal year for {ticker} ends within {window_days} days of {as_of}. Available period_end dates: {', '.join(ends)}"
+    get = lambda m: conn.execute("SELECT value_musd, accession FROM financials WHERE ticker=? AND metric=? AND period_end=?", (ticker, m, end)).fetchone()  # noqa: E731
+    (nv, na), (dv, da) = get(num), get(den)
+    if not dv:
+        return f"error: {den} is zero for {ticker} {end}"
+    return (f"{ticker} {ratio} for the fiscal year ended {end}: {100 * nv / dv:.2f}% "
+            f"({num} {nv:g} / {den} {dv:g}, USD millions). accessions: {na}, {da}")
+
+
 def _format_passages(hits: list[dict]) -> str:
     if not hits:
         return "no passages found"
@@ -127,6 +171,8 @@ def run_tool(name: str, args: dict, conn, search=None, retrieved: list | None = 
             return _format_rows(run_readonly_query(conn, str(args.get("sql", "")), max_rows=200, timeout_s=5.0))
         if name == "lookup_fact":
             return _lookup(conn, args.get("ticker", ""), args.get("metric", ""), args.get("period_end", ""))
+        if name == "financial_ratio":
+            return _ratio(conn, args.get("ticker", ""), args.get("ratio", ""), args.get("as_of", ""))
         if name == "calculate":
             return repr(safe_calculate(str(args.get("expression", ""))))
         if name == "search_filings" and search is not None:
@@ -200,7 +246,7 @@ def _agent(llm, question: str, conn, system: str, tools: list, search=None, max_
     steps = max_steps
     for step in range(max_steps):
         last = step == max_steps - 1
-        resp = _chat(llm, messages, None if last else tools, 600,
+        resp = _chat(llm, messages, None if last else tools, 900,
                      fallback=lambda t: _flatten(llm, system, question, messages, temperature=t))
         calls += 1
         model = resp["model"]
@@ -210,6 +256,13 @@ def _agent(llm, question: str, conn, system: str, tools: list, search=None, max_
         messages.append(msg)
         if not msg.get("tool_calls"):
             text, steps = msg.get("content") or "", step + 1
+            if not text.strip() and tool_calls:
+                # the reply was empty (reasoning used up the token budget); finish from a digest instead of returning nothing
+                retry = _flatten(llm, system, question, messages)
+                calls += 1
+                prompt += retry["usage"]["prompt_tokens"]
+                completion += retry["usage"]["completion_tokens"]
+                text, model = retry["message"].get("content") or "", retry["model"]
             break
         for tc in msg["tool_calls"]:
             tool_calls += 1
