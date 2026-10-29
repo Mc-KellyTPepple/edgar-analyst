@@ -30,6 +30,10 @@ on:
         description: "Archive and re-run whole tiers, e.g. 3 (empty = none)"
         required: false
         default: ""
+      redo_ids:
+        description: "Archive and re-run these question ids (comma separated)"
+        required: false
+        default: ""
       redo_refusals:
         description: "Re-run only the answerable questions that were wrongly declined"
         type: boolean
@@ -96,6 +100,7 @@ jobs:
           fi
           args="--system ${{ inputs.system }} --max-requests ${{ inputs.max_requests }}"
           [ -z "${{ inputs.redo_tiers }}" ] || args="$args --redo-tiers ${{ inputs.redo_tiers }}"
+          [ -z "${{ inputs.redo_ids }}" ] || args="$args --redo-ids ${{ inputs.redo_ids }}"
           [ "${{ inputs.redo_refusals }}" != "true" ] || args="$args --redo-refusals"
           [ -z "${{ inputs.tiers }}" ] || args="$args --tiers ${{ inputs.tiers }}"
           [ -z "${{ inputs.models }}" ] || args="$args --models ${{ inputs.models }}"

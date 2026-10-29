@@ -44,10 +44,10 @@ def drop_false_refusals(path: Path, archive_path: Path, tiers: set[int]) -> int:
     return len(drop)
 
 
-def drop_tier_results(path: Path, archive_path: Path, tiers: set[int]) -> int:
-    """Archive and remove the results of whole tiers so they are re-run (used after changing how those questions are answered)."""
+def drop_tier_results(path: Path, archive_path: Path, tiers: set[int], ids: set[str] | None = None) -> int:
+    """Archive and remove the results of whole tiers (or specific question ids) so they are re-run."""
     results = load_results(path)
-    drop = {k for k, r in results.items() if r["tier"] in tiers}
+    drop = {k for k, r in results.items() if r["tier"] in tiers or (ids and k in ids)}
     if not drop:
         return 0
     archive_path = Path(archive_path)

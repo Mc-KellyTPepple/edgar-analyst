@@ -119,12 +119,13 @@ def cmd_run_eval(args) -> None:
         extras["search"] = lambda q, ticker=None, year=None: index.search(q, k=4, ticker=ticker, year=year)
     tiers = {int(t) for t in args.tiers.split(",")} if args.tiers else None
     out = config.RESULTS_DIR / f"{args.system}.jsonl"
-    if args.redo_tiers:
+    if args.redo_tiers or args.redo_ids:
         from .evalrun import drop_tier_results
 
-        redo = {int(t) for t in args.redo_tiers.split(",")}
-        n = drop_tier_results(out, config.RESULTS_DIR / "archive" / f"{args.system}_tiers{args.redo_tiers.replace(',', '')}_prev.jsonl", redo)
-        print(f"re-running tiers {sorted(redo)}: {n} earlier answers archived")
+        redo = {int(t) for t in (args.redo_tiers or "").split(",") if t}
+        ids = {i for i in (args.redo_ids or "").split(",") if i}
+        n = drop_tier_results(out, config.RESULTS_DIR / "archive" / f"{args.system}_redo_prev.jsonl", redo, ids)
+        print(f"re-running tiers {sorted(redo)} ids {sorted(ids)}: {n} earlier answers archived")
     if args.redo_refusals:
         from .evalrun import drop_false_refusals
 
@@ -206,6 +207,7 @@ def main(argv=None) -> None:
     d.add_argument("--tiers", help="e.g. 1,2 (default: all)")
     d.add_argument("--limit", type=int, default=None, help="questions to attempt in this run")
     d.add_argument("--redo-tiers", help="archive and re-run these tiers, e.g. 3")
+    d.add_argument("--redo-ids", help="archive and re-run these question ids (comma separated)")
     d.add_argument("--redo-refusals", action="store_true", help="re-run only answerable questions that were wrongly declined")
     d.add_argument("--no-dense", action="store_true", help="full_agent: BM25 only, skip local embeddings")
     d.add_argument("--mode", choices=["live", "replay"], default="live", help="replay never touches the network")

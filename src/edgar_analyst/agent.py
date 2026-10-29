@@ -75,8 +75,8 @@ FACT_TOOLS = [TOOL_RATIO, TOOL_LOOKUP, TOOL_QUERY, TOOL_CALC]
 FULL_TOOLS = FACT_TOOLS + [TOOL_SEARCH]
 TOOLS = FACT_TOOLS  # kept for callers that import it
 
-# a tool result that really says the data is absent; a refusal is only accepted after one of these (or an error about the request)
-_NO_DATA = re.compile(r"\bno [a-z_ ]*(?:figure|fiscal year|passages)|not in the data|available period_end|\(0 rows\)|^error:", re.I | re.M)
+# a tool result that really says the data is absent; a refusal is only accepted after one of these (a calculator syntax error is not one)
+_NO_DATA = re.compile(r"\bno [a-z_ ]*(?:figure|fiscal year|passages)|not in the data|available period_end|\(0 rows\)", re.I)
 _ACCESSION = re.compile(r"\d{10}-\d{2}-\d{6}")
 
 _OPS = {ast.Add: operator.add, ast.Sub: operator.sub, ast.Mult: operator.mul, ast.Div: operator.truediv,

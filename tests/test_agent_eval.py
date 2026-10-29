@@ -252,6 +252,20 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(list(load_results(self.out)), ["c"])
         self.assertEqual(len(arch.read_text().splitlines()), 2)
 
+    def test_redo_by_id(self):
+        from edgar_analyst.evalrun import drop_tier_results
+        run_eval(QS, "closed_book", ScriptedLLM(reply("FINAL ANSWER: 600"), reply("FINAL ANSWER: 2400"), reply("I cannot answer.")),
+                 None, self.out, progress=lambda *_: None)
+        self.assertEqual(drop_tier_results(self.out, self.out.parent / "a.jsonl", set(), {"b"}), 1)
+        self.assertEqual(sorted(load_results(self.out)), ["a", "c"])
+
+    def test_calculator_error_is_not_a_grounded_refusal(self):
+        llm = ScriptedLLM(reply(calls=[("calculate", {"expression": "(1/??)"})]), reply("I cannot answer."),
+                          reply(calls=[("lookup_fact", {"ticker": "ALPH", "metric": "revenue", "period_end": "2024"})]), reply("FINAL ANSWER: 2400"))
+        r = run_facts_agent(llm, "q?", self.conn)
+        self.assertTrue(r["challenged"])
+        self.assertEqual(r["text"], "FINAL ANSWER: 2400")
+
     def test_tier_filter_and_limit(self):
         llm = ScriptedLLM(reply("FINAL ANSWER: 1"))
         s = run_eval(QS, "closed_book", llm, None, self.out, tiers={1}, limit=1, progress=lambda *_: None)
