@@ -111,6 +111,11 @@ jobs:
           if [ "${{ github.event_name }}" = "schedule" ]; then
             python -m edgar_analyst run-eval --system full_agent --max-requests 900
             python -m edgar_analyst run-eval --system facts_agent --max-requests 900
+            for set in heldout heldout2; do
+              [ -f evals/${set}_questions.jsonl ] || continue
+              python -m edgar_analyst run-eval --system facts_agent --max-requests 900 --set $set
+              python -m edgar_analyst run-eval --system full_agent --max-requests 900 --set $set
+            done
             exit 0
           fi
           args="--system ${{ inputs.system }} --max-requests ${{ inputs.max_requests }} --set ${{ inputs.question_set || 'main' }}"
@@ -122,7 +127,13 @@ jobs:
           python -m edgar_analyst run-eval $args
       - name: Report
         if: always() && steps.pending.outputs.n != '0'
-        run: python -m edgar_analyst report --set ${{ inputs.question_set || 'main' }} | tee -a "$GITHUB_STEP_SUMMARY"
+        run: |
+          python -m edgar_analyst report --set ${{ inputs.question_set || 'main' }} | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            for set in heldout heldout2; do
+              [ -f evals/${set}_questions.jsonl ] && python -m edgar_analyst report --set $set || true
+            done
+          fi
       - name: Commit results
         if: always() && steps.pending.outputs.n != '0'
         run: |

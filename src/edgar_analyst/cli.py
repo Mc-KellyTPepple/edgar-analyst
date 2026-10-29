@@ -166,13 +166,16 @@ def cmd_pending(args) -> None:
     """Print how many (system, question) pairs are still unanswered, so a scheduled run can skip itself when finished."""
     from .evalrun import load_questions, load_results
 
-    qids = {q["id"] for q in load_questions(config.QUESTIONS_PATH, config.TEXT_QUESTIONS_PATH)}
     total = 0
-    for system in args.systems:
-        done = {k for k, v in load_results(config.RESULTS_DIR / f"{system}.jsonl").items() if not v.get("error")}
-        left = len(qids - done)
-        print(f"{system}: {left} of {len(qids)} questions left", file=sys.stderr)
-        total += left
+    for qset in ("main", "heldout", "heldout2"):
+        paths = (config.QUESTIONS_PATH, config.TEXT_QUESTIONS_PATH) if qset == "main" else (_set_path(qset),)
+        qids = {q["id"] for q in load_questions(*paths)}
+        for system in args.systems:
+            done = {k for k, v in load_results(config.RESULTS_DIR / f"{system}{_suffix(qset)}.jsonl").items() if not v.get("error")}
+            left = len(qids - done)
+            if qids:
+                print(f"{system} [{qset}]: {left} of {len(qids)} questions left", file=sys.stderr)
+            total += left
     print(total)
 
 
