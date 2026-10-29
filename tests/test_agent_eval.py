@@ -73,6 +73,22 @@ class AgentTests(unittest.TestCase):
         self.assertIn("fiscal year ended 2021-01-31", beta)
         self.assertIn("%", beta)
 
+    def test_lookup_accepts_nearest_fiscal_year_and_missing_period(self):
+        near = run_tool("lookup_fact", {"ticker": "ALPH", "metric": "revenue", "period_end": "2021-01-05"}, self.conn)
+        self.assertIn("2020-12-31", near)                                   # 5 days away: accepted
+        self.assertIn("Available period_end dates", run_tool("lookup_fact", {"ticker": "ALPH", "metric": "revenue", "period_end": "2025-06-30"}, self.conn))
+        recent = run_tool("lookup_fact", {"ticker": "ALPH", "metric": "revenue"}, self.conn)   # no period given
+        self.assertIn("2024-12-31", recent)
+        self.assertIn("2020-12-31", recent)
+
+    def test_financial_growth(self):
+        out = run_tool("financial_growth", {"ticker": "ALPH", "metric": "revenue", "from_date": "2023-12-31", "to_date": "2024-12-31"}, self.conn)
+        self.assertIn("grew 33.33%", out)
+        self.assertIn("accessions: 000", out)
+        self.assertIn("Available period_end dates", run_tool("financial_growth", {"ticker": "ALPH", "metric": "revenue", "from_date": "2010-01-01", "to_date": "2024-12-31"}, self.conn))
+        self.assertTrue(run_tool("financial_growth", {"ticker": "ALPH", "metric": "nope", "from_date": "2023-12-31", "to_date": "2024-12-31"}, self.conn).startswith("error"))
+        self.assertTrue(run_tool("financial_growth", {"ticker": "ALPH", "metric": "revenue", "from_date": "soon", "to_date": "2024-12-31"}, self.conn).startswith("error"))
+
     def test_financial_ratio_generic_pair_and_errors(self):
         ok = run_tool("financial_ratio", {"ticker": "ALPH", "ratio": "rd_expense/operating_income", "as_of": "2024-12-31"}, self.conn)
         self.assertIn("rd_expense 340 / operating_income 720", ok)

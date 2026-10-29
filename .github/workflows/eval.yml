@@ -33,7 +33,7 @@ on:
       question_set:
         description: "main (tuned on) or heldout (never used for tuning; generated once with a different seed)"
         type: choice
-        options: [main, heldout]
+        options: [main, heldout, heldout2]
         default: main
       redo_ids:
         description: "Archive and re-run these question ids (comma separated)"
@@ -91,10 +91,15 @@ jobs:
           python -m edgar_analyst ingest
           python -m edgar_analyst build-db
       - name: Held-out questions (generated once, then committed)
-        if: inputs.question_set == 'heldout'
+        if: inputs.question_set != 'main' && inputs.question_set != ''
         run: |
-          [ -f evals/heldout_questions.jsonl ] || python -m edgar_analyst gen-questions --seed 11 \
-            --out evals/heldout_questions.jsonl --exclude evals/questions.jsonl --sizes 25,40,40,10
+          if [ "${{ inputs.question_set }}" = "heldout" ]; then
+            [ -f evals/heldout_questions.jsonl ] || python -m edgar_analyst gen-questions --seed 11 \
+              --out evals/heldout_questions.jsonl --exclude evals/questions.jsonl --sizes 25,40,40,10
+          else
+            [ -f evals/heldout2_questions.jsonl ] || python -m edgar_analyst gen-questions --seed 12 \
+              --out evals/heldout2_questions.jsonl --exclude evals/questions.jsonl evals/heldout_questions.jsonl --sizes 40,60,50,0
+          fi
       - name: Build text index (full_agent only)
         if: steps.pending.outputs.n != '0' && (inputs.system == 'full_agent' || github.event_name == 'schedule')
         run: |
@@ -123,6 +128,6 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
-          git add evals/results evals/llm_cache evals/groq_ledger.json evals/heldout_questions.jsonl
+          git add -A evals
           git diff --cached --quiet || git commit -m "Evaluation results"
           git pull --rebase -X theirs && git push
