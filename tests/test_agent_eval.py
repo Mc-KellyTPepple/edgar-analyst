@@ -97,7 +97,7 @@ class AgentTests(unittest.TestCase):
         llm = ScriptedLLM(reply(calls=[("calculate", {"expression": "2+2"})]), bad, bad, reply("FINAL ANSWER: 4"))
         r = run_facts_agent(llm, "q?", self.conn)
         self.assertIn("FINAL ANSWER", r["text"])
-        flat = llm.calls[2]["messages"]
+        flat = llm.calls[-1]["messages"]
         self.assertTrue(all(m["role"] in ("system", "user") for m in flat))   # no tool-call history
         self.assertIn("4", flat[1]["content"])
 

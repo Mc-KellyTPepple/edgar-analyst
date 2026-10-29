@@ -190,7 +190,7 @@ def run_closed_book(llm, question: str, **_) -> dict:
             "prompt_tokens": resp["usage"]["prompt_tokens"], "completion_tokens": resp["usage"]["completion_tokens"]}
 
 
-def _agent(llm, question: str, conn, system: str, tools: list, search=None, max_steps: int = 6) -> dict:
+def _agent(llm, question: str, conn, system: str, tools: list, search=None, max_steps: int = 8) -> dict:
     messages = [{"role": "system", "content": system}, {"role": "user", "content": question}]
     tool_calls = prompt = completion = calls = 0
     model = ""
@@ -226,11 +226,11 @@ def _agent(llm, question: str, conn, system: str, tools: list, search=None, max_
             "prompt_tokens": prompt, "completion_tokens": completion, "retrieved": retrieved, "seen_accessions": sorted(seen)}
 
 
-def run_facts_agent(llm, question: str, conn, max_steps: int = 6, **_) -> dict:
+def run_facts_agent(llm, question: str, conn, max_steps: int = 8, **_) -> dict:
     return _agent(llm, question, conn, FACTS_SYSTEM, FACT_TOOLS, max_steps=max_steps)
 
 
-def run_full_agent(llm, question: str, conn, search=None, max_steps: int = 6, **_) -> dict:
+def run_full_agent(llm, question: str, conn, search=None, max_steps: int = 8, **_) -> dict:
     tools = FULL_TOOLS if search is not None else FACT_TOOLS
     return _agent(llm, question, conn, FULL_SYSTEM, tools, search=search, max_steps=max_steps)
 
