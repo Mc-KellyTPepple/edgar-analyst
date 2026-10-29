@@ -17,9 +17,10 @@ import re
 from .llm import LLMError
 from .db import QueryError, run_readonly_query
 from .facts import METRICS
+from .grading import is_abstain
 from .questions import RATIOS
 
-PROMPT_VERSION = "v4"   # v2: first full run; v3: no refusal before the data was checked; v4: financial_ratio tool
+PROMPT_VERSION = "v5"   # v2: first full run; v3: no refusal before the data was checked; v4: financial_ratio tool; v5: refusals must be grounded in a tool result
 METRIC_NAMES = ", ".join(METRICS)
 
 _RULES = f"""You answer questions about US public companies from a read-only SQLite database of annual (10-K) figures{{extra}}.
@@ -74,6 +75,8 @@ FACT_TOOLS = [TOOL_RATIO, TOOL_LOOKUP, TOOL_QUERY, TOOL_CALC]
 FULL_TOOLS = FACT_TOOLS + [TOOL_SEARCH]
 TOOLS = FACT_TOOLS  # kept for callers that import it
 
+# a tool result that really says the data is absent; a refusal is only accepted after one of these (or an error about the request)
+_NO_DATA = re.compile(r"\bno [a-z_ ]*(?:figure|fiscal year|passages)|not in the data|available period_end|\(0 rows\)|^error:", re.I | re.M)
 _ACCESSION = re.compile(r"\d{10}-\d{2}-\d{6}")
 
 _OPS = {ast.Add: operator.add, ast.Sub: operator.sub, ast.Mult: operator.mul, ast.Div: operator.truediv,
@@ -242,6 +245,7 @@ def _agent(llm, question: str, conn, system: str, tools: list, search=None, max_
     model = ""
     retrieved: list[str] = []
     trace: list[dict] = []
+    challenged = False
     seen: set[str] = set()
     text = ""
     steps = max_steps
@@ -255,6 +259,13 @@ def _agent(llm, question: str, conn, system: str, tools: list, search=None, max_
         completion += resp["usage"]["completion_tokens"]
         msg = resp["message"]
         messages.append(msg)
+        if (not msg.get("tool_calls") and not challenged and not last and is_abstain(msg.get("content") or "")
+                and not any(_NO_DATA.search(t["out"]) for t in trace)):
+            # grounded abstention: declining is only legitimate once a tool has reported that the data is absent
+            challenged = True
+            messages.append({"role": "user", "content": "No tool has reported missing data yet. Retrieve the figures you need with the tools "
+                                                        "first, then answer; decline only if a tool shows the data is absent."})
+            continue
         if not msg.get("tool_calls"):
             text, steps = msg.get("content") or "", step + 1
             if not text.strip() and tool_calls:
@@ -280,7 +291,7 @@ def _agent(llm, question: str, conn, system: str, tools: list, search=None, max_
                                                 "Say you cannot answer only if a needed figure was never returned by a tool."})
     return {"prompt_version": PROMPT_VERSION, "text": text, "steps": steps, "tool_calls": tool_calls, "model": model, "calls": calls,
             "prompt_tokens": prompt, "completion_tokens": completion, "retrieved": retrieved, "seen_accessions": sorted(seen),
-            "trace": trace[:10]}
+            "trace": trace[:10], "challenged": challenged}
 
 
 def run_facts_agent(llm, question: str, conn, max_steps: int = 8, **_) -> dict:

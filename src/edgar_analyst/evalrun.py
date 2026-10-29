@@ -85,7 +85,7 @@ def run_eval(questions: list[dict], system: str, llm, conn, out_path: Path, tier
                     "abstained": g.get("abstained", False), "reason": g["reason"], "response": run["text"],
                     "citation_recall": (len(evidence & cited) / len(evidence)) if evidence else None,
                     "citation_precision": (len(evidence & cited) / len(cited)) if evidence and cited else None,
-                    "trace": run.get("trace", []),
+                    "trace": run.get("trace", []), "challenged": run.get("challenged", False),
                     "retrieval_hit": bool(gold_chunks & set(run.get("retrieved", []))) if gold_chunks else None,
                     "model": run["model"], "calls": run["calls"], "tool_calls": run["tool_calls"],
                     "prompt_tokens": run["prompt_tokens"], "completion_tokens": run["completion_tokens"],

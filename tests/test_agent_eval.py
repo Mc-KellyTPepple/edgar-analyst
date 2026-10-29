@@ -149,6 +149,28 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(r["text"], "FINAL ANSWER: 7")
         self.assertIsNotNone(llm.calls[1]["tools"])   # same step again with tools, not the flat digest
 
+    def test_ungrounded_refusal_is_challenged_once(self):
+        llm = ScriptedLLM(reply("I cannot answer."),
+                          reply(calls=[("lookup_fact", {"ticker": "ALPH", "metric": "revenue", "period_end": "2024"})]),
+                          reply("FINAL ANSWER: 2400"))
+        r = run_facts_agent(llm, "q?", self.conn)
+        self.assertEqual(r["text"], "FINAL ANSWER: 2400")
+        self.assertTrue(r["challenged"])
+        self.assertIn("No tool has reported missing data", llm.calls[1]["messages"][-1]["content"])
+
+    def test_grounded_refusal_is_accepted(self):
+        llm = ScriptedLLM(reply(calls=[("lookup_fact", {"ticker": "ZZZ", "metric": "revenue", "period_end": "2024"})]),
+                          reply("I cannot answer: not in the data."))
+        r = run_facts_agent(llm, "q?", self.conn)
+        self.assertEqual(r["calls"], 2)
+        self.assertFalse(r["challenged"])
+
+    def test_refusal_challenged_at_most_once(self):
+        llm = ScriptedLLM(reply("I cannot answer."), reply("I cannot answer."))
+        r = run_facts_agent(llm, "q?", self.conn)
+        self.assertEqual(r["text"], "I cannot answer.")
+        self.assertEqual(r["calls"], 2)
+
     def test_last_step_uses_flat_digest(self):
         loop = [reply(calls=[("calculate", {"expression": "1+1"})]) for _ in range(5)] + [reply("FINAL ANSWER: 2")]
         llm = ScriptedLLM(*loop)
