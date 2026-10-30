@@ -73,7 +73,7 @@ def cmd_serve(args) -> None:
     index = TextIndex(config.TEXT_DB_PATH, None if args.no_dense else try_embedder(), None if args.no_rerank else try_reranker())
     print(f"retrieval mode: {index.mode}, rerank: {'yes' if index.reranker else 'no'}", flush=True)
     search = lambda q, ticker=None, year=None: index.search(q, k=4, ticker=ticker, year=year)  # noqa: E731
-    serve(App(llm, conn, search, Limits(args.per_ip, args.daily_cap)))
+    serve(App(llm, conn, search, Limits(args.per_ip, args.daily_cap), mode=index.mode + ("+rerank" if index.reranker else "")))
 
 
 def _suffix(qset: str) -> str:

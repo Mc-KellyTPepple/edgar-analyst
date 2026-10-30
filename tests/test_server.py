@@ -10,6 +10,8 @@ from edgar_analyst.server import App, Limits, make_handler
 
 
 def fake_runner(llm, question, conn=None, search=None, **_):
+    if "crash" in question:
+        raise ConnectionError("secret internal detail")
     if "boom" in question:
         raise LLMError("every model in the chain is out of quota for today")
     return {"text": "Reasoning.\nFINAL ANSWER: 42\nSOURCES: 0000000001-24-000001", "model": "fake", "tool_calls": 2}
@@ -92,6 +94,11 @@ class HttpTests(unittest.TestCase):
         self.assertEqual(code, 503)
         self.assertIn("out of free quota", json.loads(body)["error"])
         self.assertNotIn("chain", json.loads(body)["error"])   # no internals leaked
+
+    def test_unexpected_errors_do_not_leak(self):
+        code, body = self.call("/ask", {"question": "crash"}, {"X-Forwarded-For": "9.9.9.5"})
+        self.assertEqual(code, 502)
+        self.assertNotIn(b"secret", body)
 
     def test_rate_limit_per_forwarded_ip(self):
         h = {"X-Forwarded-For": "9.9.9.4, 10.0.0.1"}

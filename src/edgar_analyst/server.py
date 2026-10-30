@@ -64,8 +64,8 @@ class Limits:
 
 
 class App:
-    def __init__(self, llm, conn, search, limits: Limits | None = None, max_len: int = 500, runner=run_full_agent):
-        self.llm, self.conn, self.search = llm, conn, search
+    def __init__(self, llm, conn, search, limits: Limits | None = None, max_len: int = 500, runner=run_full_agent, mode: str = "n/a"):
+        self.llm, self.conn, self.search, self.mode = llm, conn, search, mode
         self.limits, self.max_len, self.runner = limits or Limits(), max_len, runner
         self.lock = threading.Lock()   # one agent run at a time: sqlite connection and the Groq rate limiter are shared
 
@@ -85,6 +85,8 @@ class App:
         except LLMError as exc:
             msg = "The model provider is busy or out of free quota right now. Try again later." if "quota" in str(exc).lower() or "budget" in str(exc).lower() else "The model provider returned an error. Try again."
             return 503, {"error": msg}
+        except Exception:   # network failure, bad key, anything unexpected: never leak internals or drop the connection
+            return 502, {"error": "Could not reach the model provider. Try again later."}
         text = run["text"] or ""
         return 200, {"answer": text, "final_answer": extract_final(text), "sources": sorted(cited_accessions(text)),
                      "model": run["model"], "tool_calls": run["tool_calls"], "seconds": round(time.monotonic() - t0, 1)}
@@ -105,7 +107,7 @@ def make_handler(app: App):
 
         def do_GET(self):  # noqa: N802
             if self.path == "/health":
-                self._json(200, {"ok": True, "retrieval": getattr(app.search, "mode", "n/a")})
+                self._json(200, {"ok": True, "retrieval": app.mode})
             elif self.path in ("/", "/index.html"):
                 self._send(200, PAGE.encode(), "text/html")
             else:

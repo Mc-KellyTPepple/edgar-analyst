@@ -90,6 +90,25 @@ make ingest db questions                             # download data, build the 
 Or run the **Ingest SEC data** workflow in GitHub Actions (set the `SEC_CONTACT`
 repository variable to your email first).
 
+## Deploy for free
+
+No paid plan is needed. The service (`python -m edgar_analyst serve`, standard library HTTP) runs in the `Dockerfile` on a free
+[Hugging Face Space](https://huggingface.co/new-space) (Docker SDK, CPU, 16 GB RAM, enough for the local search models) and uses your free Groq key.
+It protects that quota: 10 questions per visitor per hour, 150 per day for the whole service, a 500-character question limit, and cached
+answers cost nothing. When the quota is gone it says so instead of failing.
+
+1. Run the **Build deploy data** workflow once (needs the `SEC_CONTACT` variable). It commits `deploy/data/facts.db` and `text.db` (about 20 MB).
+2. Create a Space (Docker, blank) and add a secret `GROQ_API_KEY` under Settings, Variables and secrets.
+3. Push this repo to the Space, with `deploy/hf/README.md` as the Space's `README.md`:
+   ```bash
+   git clone https://huggingface.co/spaces/YOUR_NAME/edgar-analyst space && cd space
+   git -C ../edgar-analyst archive HEAD | tar -x            # copy the repo files
+   cp deploy/hf/README.md README.md && git add -A && git commit -m deploy && git push
+   ```
+The Space builds the image (a few minutes, mostly model downloads) and serves the UI at its URL; `POST /ask` with `{"question": "..."}` is the API.
+Free Spaces sleep after about 48 hours without visitors and wake on the next request.
+The Docker image and server were not built or run on a real host from the development sandbox (no network there); the server code is covered by tests.
+
 ## Roadmap
 
 - [x] Week 1: data pipeline (verified on live SEC data), facts DB, question generator and grader
@@ -98,7 +117,8 @@ repository variable to your email first).
 - [x] Week 2: third tool (text search over filing sections) added to the agent (`full_agent`)
 - [x] Week 3: full evaluation runs (closed book vs facts agent vs full agent) and a quality gate in CI (on stored results)
 - [ ] Next: a clean single-version 120b-only rerun of all tiers, then reranking and broader text questions
-- [ ] Week 4: tracing and cost dashboard; Docker; AWS deployment with Terraform
+- [x] Week 4 (part): Docker image and HTTP service built for free hosting (Hugging Face Space); deployment steps below
+- [ ] Week 4: tracing and cost dashboard
 - [ ] Week 5-6: load test, write-up with failure cases, demo video
 
 ## Results
