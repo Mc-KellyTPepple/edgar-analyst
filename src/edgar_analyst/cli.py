@@ -61,6 +61,21 @@ def cmd_gen_questions(args) -> None:
     print(f"wrote {out}")
 
 
+def cmd_serve(args) -> None:
+    from .llm import LLM
+    from .server import App, Limits, serve
+    from .textdb import TextIndex, try_embedder, try_reranker
+
+    llm = LLM(os.environ.get("GROQ_API_KEY"), models=_models(args.models), cache_dir=config.LLM_CACHE_DIR,
+              ledger_path=Path(os.environ.get("LEDGER_PATH", "/tmp/groq_ledger.json")),
+              max_requests=None)
+    conn = open_readonly(config.DB_PATH)
+    index = TextIndex(config.TEXT_DB_PATH, None if args.no_dense else try_embedder(), None if args.no_rerank else try_reranker())
+    print(f"retrieval mode: {index.mode}, rerank: {'yes' if index.reranker else 'no'}", flush=True)
+    search = lambda q, ticker=None, year=None: index.search(q, k=4, ticker=ticker, year=year)  # noqa: E731
+    serve(App(llm, conn, search, Limits(args.per_ip, args.daily_cap)))
+
+
 def _suffix(qset: str) -> str:
     return "" if qset == "main" else f"_{qset}"
 
@@ -241,6 +256,13 @@ def main(argv=None) -> None:
     d.add_argument("--no-dense", action="store_true", help="full_agent: BM25 only, skip local embeddings")
     d.add_argument("--mode", choices=["live", "replay"], default="live", help="replay never touches the network")
     d.set_defaults(fn=cmd_run_eval)
+    v = sub.add_parser("serve", help="HTTP API and one-page UI (set GROQ_API_KEY)")
+    v.add_argument("--models")
+    v.add_argument("--per-ip", type=int, default=10, help="questions per visitor per hour")
+    v.add_argument("--daily-cap", type=int, default=150, help="questions per day for the whole service")
+    v.add_argument("--no-dense", action="store_true")
+    v.add_argument("--no-rerank", action="store_true")
+    v.set_defaults(fn=cmd_serve)
     h = sub.add_parser("pending", help="count unanswered (system, question) pairs")
     h.add_argument("--systems", nargs="+", default=["full_agent", "facts_agent"])
     h.set_defaults(fn=cmd_pending)

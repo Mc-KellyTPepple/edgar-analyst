@@ -1,0 +1,40 @@
+name: Build deploy data
+
+# Builds the two databases the hosted service needs (facts + filing-text search index with embeddings)
+# and commits them to deploy/data/, so the Docker image can be built anywhere without SEC access.
+# Needs the SEC_CONTACT repository variable. Run it again to refresh the data.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      SEC_USER_AGENT: edgar-analyst ${{ vars.SEC_CONTACT }}
+      PYTHONPATH: src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          [ -n "${{ vars.SEC_CONTACT }}" ] || { echo "::error::Set the SEC_CONTACT repository variable."; exit 1; }
+          pip install -e . fastembed
+      - run: |
+          python -m edgar_analyst ingest
+          python -m edgar_analyst build-db
+          python -m edgar_analyst ingest-text
+      - name: Commit databases
+        run: |
+          mkdir -p deploy/data
+          cp data/facts.db data/text.db deploy/data/
+          ls -la deploy/data
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -f deploy/data
+          git diff --cached --quiet || (git commit -m "Refresh deploy data" && git pull --rebase -X theirs && git push)
