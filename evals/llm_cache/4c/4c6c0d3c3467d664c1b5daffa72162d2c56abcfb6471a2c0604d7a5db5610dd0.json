@@ -1,0 +1,1 @@
+{"message": {"content": "The 2024 Form\u202f10\u2011K reports that Alphabet Inc. had **190,000** employees at the end of the fiscal year.\n\nFINAL ANSWER: 190000\nSOURCES: 0001652044-25-000014, 0001652044-25-000014 (employee count passage)", "role": "assistant"}, "model": "openai/gpt-oss-120b", "usage": {"completion_tokens": 183, "prompt_tokens": 2966}}
