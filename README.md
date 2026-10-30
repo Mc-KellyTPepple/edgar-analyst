@@ -150,9 +150,19 @@ Held-out set 1 (66 answerable questions: 16 lookups, 29 ratios/growth, 21 compar
 So the tuned-set scores overstate generalisation a little for the facts agent. Its 4 misses: two requests rejected by the API after the model
 asked for data the final digest step did not have, one ratio computed by hand from a half-remembered revenue figure with an invented source,
 and one growth question answered with a year. Fixes: a `financial_growth` tool, lookups that accept the nearest fiscal year and an optional
-period, clearer tool selection. Because set 1 was then used for fixing, it no longer counts as held-out; a fresh set 2 (seed 12, 89 questions, again excluding
-all earlier ones) is being run on the fixed agents, a day or two because of Groq's daily limits (the nightly job continues it). Neither held-out set contains refusal
-or text questions, and 66 questions leave wide error bars.
+period, clearer tool selection. Because set 1 was then used for fixing, it no longer counts as held-out. A fresh set 2 (seed 12, 89 questions, excluding all earlier ones)
+was run once on the fixed agents (prompt v6, no errors):
+
+| system | lookup (35) | multi-step (33) | comparison (21) | all 89 | citation recall | citation precision |
+|---|---|---|---|---|---|---|
+| facts agent | 100% | 100% | 100% | **100% (89/89)** | 100% | 100% |
+| full agent | 100% | 100% | 100% | **100% (89/89)** | 98.3% | 100% |
+
+The fixes generalised: the facts agent went from 93.9% on set 1 to 100% on a set it had never seen, and the full agent stayed at 100%.
+Limits: 89 questions still means the true rate could be a few points lower (100% on 89 is consistent with roughly 96-100%); both held-out sets use the same
+question templates and the same 10 companies as the tuned set, so this shows the agents handle new instances of these question types, not new
+kinds of question; they contain no refusal or filing-text questions; and about a third of the full agent's answers came from the smaller `gpt-oss-20b`
+model. Refusals and filing-text questions are only covered by the tuned set (100% refusals, 82.6% filing text).
 
 Caveats: single run, no confidence intervals; every question now has an answer (no errors). The last 3 that Groq kept rejecting were completed by resampling malformed tool calls and raising the step budget from 6 to 8, so a few answers used a slightly different setup than the rest. Questions about figures come from the same database the agent queries, so tiers 1-3
 show correct tool use, not the ability to read filings; tier 4 is the step toward that but covers one question type (employee counts),
