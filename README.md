@@ -99,12 +99,9 @@ answers cost nothing. When the quota is gone it says so instead of failing.
 
 1. Run the **Build deploy data** workflow once (needs the `SEC_CONTACT` variable). It commits `deploy/data/facts.db` and `text.db` (about 20 MB).
 2. Create a Space (Docker, blank) and add a secret `GROQ_API_KEY` under Settings, Variables and secrets.
-3. Push this repo to the Space, with `deploy/hf/README.md` as the Space's `README.md`:
-   ```bash
-   git clone https://huggingface.co/spaces/YOUR_NAME/edgar-analyst space && cd space
-   git -C ../edgar-analyst archive HEAD | tar -x            # copy the repo files
-   cp deploy/hf/README.md README.md && git add -A && git commit -m deploy && git push
-   ```
+3. Upload the files to the Space: in the Space, Files, Add file, Upload files, and drag in the contents of the Space bundle
+   (`Dockerfile`, `pyproject.toml`, `README.md` taken from `deploy/hf/README.md`, `src/`, `deploy/data/`). The web upload handles the
+   20 MB database through Git LFS automatically; a plain `git push` of it is rejected unless you run `git lfs track "*.db"` first.
 The Space builds the image (a few minutes, mostly model downloads) and serves the UI at its URL; `POST /ask` with `{"question": "..."}` is the API.
 Free Spaces sleep after about 48 hours without visitors and wake on the next request.
 The Docker image and server were not built or run on a real host from the development sandbox (no network there); the server code is covered by tests.

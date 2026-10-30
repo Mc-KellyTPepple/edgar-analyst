@@ -17,7 +17,6 @@ PY
 
 COPY src ./src
 COPY deploy/data ./data
-COPY evals/llm_cache ./evals/llm_cache
 
 # Hugging Face Spaces runs the container as uid 1000
 RUN useradd -m -u 1000 app && chown -R app /app
