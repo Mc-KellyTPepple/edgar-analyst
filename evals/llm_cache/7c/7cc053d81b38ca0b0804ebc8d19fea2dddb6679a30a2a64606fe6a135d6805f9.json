@@ -1,0 +1,1 @@
+{"message": {"role": "assistant", "tool_calls": [{"function": {"arguments": "{\"query\":\"employees\",\"ticker\":\"AMZN\",\"year\":2025}", "name": "search_filings"}, "id": "fc_671a2d20-8b01-4114-8ffa-23b260db8005", "type": "function"}]}, "model": "openai/gpt-oss-20b", "usage": {"completion_tokens": 47, "prompt_tokens": 872}}

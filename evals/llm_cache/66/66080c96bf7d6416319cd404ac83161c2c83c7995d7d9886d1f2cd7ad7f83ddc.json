@@ -1,0 +1,1 @@
+{"message": {"role": "assistant", "tool_calls": [{"function": {"arguments": "{\"query\":\"Alphabet Inc. employees 2024 10-K\",\"ticker\":\"GOOGL\",\"year\":2024}", "name": "search_filings"}, "id": "fc_3666b671-fcd2-44f3-8d85-7ba348df778e", "type": "function"}]}, "model": "openai/gpt-oss-20b", "usage": {"completion_tokens": 57, "prompt_tokens": 873}}

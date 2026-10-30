@@ -68,32 +68,32 @@
       "1": 100.0,
       "2": 100.0,
       "3": 100.0,
-      "4": 82.6
+      "4": 50.0
     },
     "by_model": {
       "openai/gpt-oss-120b": {
-        "accuracy": 99.2,
-        "n": 125
+        "accuracy": 100.0,
+        "n": 121
       },
       "openai/gpt-oss-20b": {
-        "accuracy": 93.8,
-        "n": 48
+        "accuracy": 97.0,
+        "n": 33
       }
     },
     "citation_precision": 100.0,
     "citation_recall": 99.8,
     "correct_refusal_rate": 100.0,
-    "errors": 0,
+    "errors": 2,
     "false_refusal_rate": 0.0,
-    "mean_llm_calls": 3.11,
-    "mean_tokens": 3031,
-    "mean_tool_calls": 2.07,
+    "mean_llm_calls": 3.06,
+    "mean_tokens": 2716,
+    "mean_tool_calls": 2.04,
     "models": [
       "openai/gpt-oss-120b",
       "openai/gpt-oss-20b"
     ],
-    "p95_seconds": 60.34,
-    "questions": 187,
-    "retrieval_hit_rate": 91.3
+    "p95_seconds": 59.69,
+    "questions": 170,
+    "retrieval_hit_rate": 100.0
   }
 }
