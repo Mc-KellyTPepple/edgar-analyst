@@ -20,7 +20,7 @@ from .facts import METRICS
 from .grading import is_abstain
 from .questions import RATIOS
 
-PROMPT_VERSION = "v7"   # v2: first full run; v3: no refusal before the data was checked; v4: financial_ratio tool; v5: refusals must be grounded in a tool result
+PROMPT_VERSION = "v8"   # v2: first full run; v3: no refusal before the data was checked; v4: financial_ratio tool; v5: refusals must be grounded in a tool result
 METRIC_NAMES = ", ".join(METRICS)
 
 _RULES = f"""You answer questions about US public companies from a read-only SQLite database of annual (10-K) figures{{extra}}.
@@ -39,7 +39,9 @@ FACTS_SYSTEM = _RULES.format(extra="", more="")
 FULL_SYSTEM = _RULES.format(
     extra=" and a search index over the text of those 10-Ks (Item 1 Business, Item 1A Risk Factors, Item 7 MD&A)",
     more="- For facts only stated in the filing text (employees, risks, strategy), use search_filings with ticker and year, "
-         "and answer only from the passages returned.\n")
+         "and answer only from the passages returned. If a passage gives several numbers, use the one that matches the question's exact wording "
+         "(for example a total headcount, not a seasonal or contractor figure) and put it on the FINAL ANSWER line exactly as the passage "
+         "states it, without rounding or estimating.\n")
 
 CLOSED_BOOK_SYSTEM = """Answer the question about a US public company from memory only. You have no tools.
 If you do not know or the information does not exist, say you cannot answer.
@@ -75,7 +77,7 @@ TOOL_SEARCH = {"type": "function", "function": {
     "name": "search_filings",
     "description": "Search the text of 10-K filings. Returns the best passages with their accession numbers.",
     "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "ticker": {"type": "string"},
-                                                    "year": {"type": ["string", "integer"], "description": "fiscal year end year, e.g. 2024"}},
+                                                    "year": {"description": "fiscal year end year, e.g. 2024 (number or text)"}},
                    "required": ["query"]}}}
 FACT_TOOLS = [TOOL_RATIO, TOOL_GROWTH, TOOL_LOOKUP, TOOL_QUERY, TOOL_CALC]
 FULL_TOOLS = FACT_TOOLS + [TOOL_SEARCH]
