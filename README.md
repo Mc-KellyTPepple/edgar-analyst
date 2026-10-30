@@ -110,8 +110,8 @@ graded automatically. Raw responses are in `evals/results/`; the first-run resul
 | system | tier 1 lookup | tier 2 multi-step | tier 3 comparison | tier 4 filing text | answerable (1-3) | correct refusals (tier 0) | false refusals | citation recall | citation precision | retrieval hit |
 |---|---|---|---|---|---|---|---|---|---|---|
 | closed book (model memory) | 10.0% | 8.3% | 40.0% | - | 17.3% | 71.4% | 37.3% | n/a | n/a | n/a |
-| facts agent (ratio + lookup + SQL + calculator) | 100% | 100% | 95.0% | 0.0% | 98.7% | 100% | 0.7% | 98.7% | 100% | n/a |
-| full agent (+ filing search) | 100% | 100% | 95.0% | 82.6% | 98.7% | 100% | 1.3% | 98.4% | 100% | 91.3% |
+| facts agent (ratio + lookup + SQL + calculator) | 100% | 100% | 100% | 0.0% | 100% | 100% | 0% | 100% | 100% | n/a |
+| full agent (+ filing search + reranker) | 100% | 100% | 100% | 87.0% | 100% | 100% | 0% | 99.8% | 100% | 100% |
 
 What the numbers say:
 
@@ -135,8 +135,11 @@ What the numbers say:
   said string, and Groq rejected the whole request as `tool_use_failed`. Fixes: a `financial_ratio(ticker, ratio, as_of)` tool that picks each
   company's nearest fiscal year, divides, and returns the accessions; recovery from empty replies; a permissive schema; a clearer
   out-of-steps instruction; tool-call traces stored with every answer so failures can be diagnosed.
-- **What is left:** 2 of 40 comparison questions per agent. Three of those four were answered by the smaller `gpt-oss-20b` model after the larger
-  one's daily quota ran out, and it declined even though the lookups had returned the figures. A re-run on the 120b model should clear them.
+- **Filing text: 82.6% to 87.0%** (20 of 23) after adding a local cross-encoder reranker to the search, a grader fix (it was reading an accession
+  number as the answer), and a prompt telling the model to use the figure matching the question's exact wording without rounding. The right passage is now
+  retrieved for every question (100%, was 91%). The 3 remaining misses are the model rounding or choosing a wrong number from a retrieved passage
+  (Amazon 1,540,000 for 1,576,000 and for 1,556,000; Google 190,000 for 183,323), so the next lever is answer extraction, not search.
+- Tiers 1-3 are now 100% on the tuned set after several fix rounds, which is why the held-out results below matter more.
 
 **Held-out check.** The 187 questions above were used to find and fix failures, so their scores are tuned-on numbers. To measure
 generalisation, a second set was generated with a different seed and every question that also appears in the main set removed.
