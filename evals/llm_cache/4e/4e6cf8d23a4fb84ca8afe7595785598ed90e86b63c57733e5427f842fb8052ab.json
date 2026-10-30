@@ -1,0 +1,1 @@
+{"message": {"content": "FINAL ANSWER: AMZN\nSOURCES: 0000050863-26-000011, 0001018724-26-000004", "role": "assistant"}, "model": "openai/gpt-oss-120b", "usage": {"completion_tokens": 66, "prompt_tokens": 970}}

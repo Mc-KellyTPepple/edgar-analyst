@@ -1,0 +1,1 @@
+{"message": {"content": "FINAL ANSWER: NVDA\nSOURCES: 0001045810-26-000021, 0001652044-26-000018, 0001652044-25-000014", "role": "assistant"}, "model": "openai/gpt-oss-120b", "usage": {"completion_tokens": 76, "prompt_tokens": 977}}

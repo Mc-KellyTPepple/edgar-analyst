@@ -1,16 +1,16 @@
 {
   "facts_agent": {
-    "accuracy_answerable": 93.9,
+    "accuracy_answerable": 97.0,
     "accuracy_by_tier": {
       "1": 100.0,
-      "2": 86.2,
+      "2": 93.1,
       "3": 100.0,
       "4": null
     },
     "by_model": {
       "openai/gpt-oss-120b": {
-        "accuracy": 96.3,
-        "n": 27
+        "accuracy": 96.6,
+        "n": 29
       },
       "openai/gpt-oss-20b": {
         "accuracy": 97.3,
@@ -18,18 +18,18 @@
       }
     },
     "citation_precision": 100.0,
-    "citation_recall": 93.2,
+    "citation_recall": 93.4,
     "correct_refusal_rate": null,
-    "errors": 2,
+    "errors": 0,
     "false_refusal_rate": 0.0,
-    "mean_llm_calls": 2.92,
-    "mean_tokens": 2504,
-    "mean_tool_calls": 1.94,
+    "mean_llm_calls": 2.98,
+    "mean_tokens": 2557,
+    "mean_tool_calls": 1.97,
     "models": [
       "openai/gpt-oss-120b",
       "openai/gpt-oss-20b"
     ],
-    "p95_seconds": 60.0,
+    "p95_seconds": 59.94,
     "questions": 66,
     "retrieval_hit_rate": null
   },
