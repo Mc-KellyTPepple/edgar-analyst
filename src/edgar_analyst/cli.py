@@ -129,10 +129,11 @@ def cmd_run_eval(args) -> None:
     conn = open_readonly(config.DB_PATH)
     extras = {}
     if args.system == "full_agent":
-        from .textdb import TextIndex, try_embedder
+        from .textdb import TextIndex, try_embedder, try_reranker
 
-        index = TextIndex(config.TEXT_DB_PATH, None if args.no_dense else try_embedder())
-        print(f"retrieval mode: {index.mode}")
+        index = TextIndex(config.TEXT_DB_PATH, None if args.no_dense else try_embedder(),
+                          None if args.no_rerank else try_reranker())
+        print(f"retrieval mode: {index.mode}, rerank: {'yes' if index.reranker else 'no'}")
         extras["search"] = lambda q, ticker=None, year=None: index.search(q, k=4, ticker=ticker, year=year)
     tiers = {int(t) for t in args.tiers.split(",")} if args.tiers else None
     out = config.RESULTS_DIR / f"{args.system}{_suffix(args.set)}.jsonl"
@@ -236,6 +237,7 @@ def main(argv=None) -> None:
     d.add_argument("--redo-tiers", help="archive and re-run these tiers, e.g. 3")
     d.add_argument("--redo-ids", help="archive and re-run these question ids (comma separated)")
     d.add_argument("--redo-refusals", action="store_true", help="re-run only answerable questions that were wrongly declined")
+    d.add_argument("--no-rerank", action="store_true", help="full_agent: skip the cross-encoder reranker")
     d.add_argument("--no-dense", action="store_true", help="full_agent: BM25 only, skip local embeddings")
     d.add_argument("--mode", choices=["live", "replay"], default="live", help="replay never touches the network")
     d.set_defaults(fn=cmd_run_eval)

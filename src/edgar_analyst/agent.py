@@ -20,7 +20,7 @@ from .facts import METRICS
 from .grading import is_abstain
 from .questions import RATIOS
 
-PROMPT_VERSION = "v6"   # v2: first full run; v3: no refusal before the data was checked; v4: financial_ratio tool; v5: refusals must be grounded in a tool result
+PROMPT_VERSION = "v7"   # v2: first full run; v3: no refusal before the data was checked; v4: financial_ratio tool; v5: refusals must be grounded in a tool result
 METRIC_NAMES = ", ".join(METRICS)
 
 _RULES = f"""You answer questions about US public companies from a read-only SQLite database of annual (10-K) figures{{extra}}.

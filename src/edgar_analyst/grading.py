@@ -24,7 +24,10 @@ _SCALE_TO_MILLIONS = {"trillion": 1e6, "tn": 1e6, "billion": 1e3, "bn": 1e3, "b"
 
 def extract_final(response: str) -> str:
     matches = _FINAL.findall(response)
-    return matches[-1].strip().splitlines()[0] if matches else response.strip()
+    if matches:
+        return matches[-1].strip().splitlines()[0]
+    # no FINAL ANSWER line: use the text before any SOURCES line, so accession numbers are not read as the answer
+    return re.split(r"\bsources?\s*[:\-]", response, flags=re.I)[0].strip()
 
 
 def _numbers(text: str) -> list[tuple[float, str]]:

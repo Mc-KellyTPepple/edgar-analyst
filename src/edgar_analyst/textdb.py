@@ -41,6 +41,29 @@ class FastEmbedder:
         return self._norm(np.array(list(self.model.query_embed(text)))[0])
 
 
+RERANK_MODEL = "Xenova/ms-marco-MiniLM-L-6-v2"
+
+
+class FastReranker:
+    """Local cross-encoder: scores (query, passage) pairs jointly, which is more precise than comparing embeddings."""
+
+    def __init__(self, model: str = RERANK_MODEL):
+        from fastembed.rerank.cross_encoder import TextCrossEncoder  # optional dependency
+
+        self.model = TextCrossEncoder(model_name=model)
+
+    def score(self, query: str, texts: list[str]) -> list[float]:
+        return [float(x) for x in self.model.rerank(query, texts)]
+
+
+def try_reranker():
+    try:
+        return FastReranker()
+    except Exception as exc:
+        print(f"reranker unavailable ({type(exc).__name__}: {exc}); using fused ranking only")
+        return None
+
+
 def try_embedder():
     try:
         return FastEmbedder()
@@ -83,9 +106,10 @@ def _fts_query(q: str) -> str | None:
 
 
 class TextIndex:
-    def __init__(self, path: Path, embedder=None):
+    def __init__(self, path: Path, embedder=None, reranker=None, rerank_pool: int = 16):
         self.conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True, check_same_thread=False)
         self.embedder = embedder
+        self.reranker, self.rerank_pool = reranker, rerank_pool
         self.keys: list[str] = []
         self.matrix = None
         stored = self.conn.execute("SELECT v FROM meta WHERE k='embedder'").fetchone()
@@ -131,7 +155,13 @@ class TextIndex:
         for ranking in (self._bm25(query, ticker, year, pool), self._dense(query, ticker, year, pool)):
             for rank, key in enumerate(ranking):
                 ranked[key] = ranked.get(key, 0.0) + 1.0 / (60 + rank)
-        top = sorted(ranked, key=lambda k_: -ranked[k_])[:k]
+        top = sorted(ranked, key=lambda k_: -ranked[k_])[: max(k, self.rerank_pool) if self.reranker else k]
+        if self.reranker and len(top) > 1:
+            texts = [self.conn.execute("SELECT text FROM chunks WHERE key=?", (key,)).fetchone()[0] for key in top]
+            scores = self.reranker.score(query, texts)
+            top = [key for _, key in sorted(zip(scores, top), key=lambda x: -x[0])][:k]
+            ranked = {key: ranked[key] for key in top}
+        top = top[:k]
         out = []
         for key in top:
             r = self.conn.execute("SELECT key, ticker, accession, period_end, item, text FROM chunks WHERE key=?", (key,)).fetchone()

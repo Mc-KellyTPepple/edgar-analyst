@@ -135,11 +135,28 @@ class RetrievalTests(unittest.TestCase):
         hy = idx.search("staff headcount", k=2, ticker="BETA")
         self.assertEqual(hy[0]["key"], "0000000002-25-000001:1:0")
 
+    def test_reranker_reorders_candidates(self):
+        class Prefers:
+            def score(self, query, texts):
+                return [1.0 if "batteries" in t else 0.0 for t in texts]
+        build_text_db(self.path, corpus())
+        idx = TextIndex(self.path, reranker=Prefers())
+        top = idx.search("employees worldwide factories", k=2)
+        self.assertEqual(top[0]["key"], "0000000002-25-000001:1:0")   # BM25 alone prefers an ALPH passage
+        self.assertEqual(len(top), 2)
+
     def test_embedder_mismatch_falls_back_to_bm25(self):
         build_text_db(self.path, corpus(), FakeEmbedder())
         other = FakeEmbedder()
         other.name = "different-model"
         self.assertEqual(TextIndex(self.path, other).mode, "bm25")
+
+
+class GradingFallbackTests(unittest.TestCase):
+    def test_sources_line_is_not_read_as_the_answer(self):
+        q = {"answer": {"kind": "count", "value": 183323, "tolerance_rel": 0.01}}
+        self.assertTrue(grade(q, "Answer: 183,323\nSOURCES: 0001652044-25-000014")["correct"])
+        self.assertFalse(grade(q, "Answer: 190,000\nSOURCES: 0001652044-25-000014")["correct"])
 
 
 class TextQuestionTests(unittest.TestCase):
