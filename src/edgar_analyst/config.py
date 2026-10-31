@@ -6,9 +6,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 RAW_DIR = ROOT / "data" / "raw"
-DB_PATH = ROOT / "data" / "facts.db"
+def _data_file(name: str) -> Path:
+    """data/ when the pipeline was run locally, otherwise the committed copy in deploy/data/ (used by the hosted service)."""
+    local = ROOT / "data" / name
+    return local if local.exists() or not (ROOT / "deploy" / "data" / name).exists() else ROOT / "deploy" / "data" / name
+
+
+DB_PATH = _data_file("facts.db")
 QUESTIONS_PATH = ROOT / "evals" / "questions.jsonl"
-TEXT_DB_PATH = ROOT / "data" / "text.db"
+TEXT_DB_PATH = _data_file("text.db")
 TEXT_QUESTIONS_PATH = ROOT / "evals" / "text_questions.jsonl"
 HELDOUT_QUESTIONS_PATH = ROOT / "evals" / "heldout_questions.jsonl"
 HELDOUT2_QUESTIONS_PATH = ROOT / "evals" / "heldout2_questions.jsonl"

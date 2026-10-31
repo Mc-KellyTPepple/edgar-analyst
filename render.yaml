@@ -1,0 +1,19 @@
+# Free hosting on Render (no card): a Python web service that sleeps after 15 idle minutes and wakes on the next request.
+# Add GROQ_API_KEY in the Render dashboard (Environment); it is not stored here.
+services:
+  - type: web
+    name: edgar-analyst
+    runtime: python
+    plan: free
+    buildCommand: pip install requests beautifulsoup4 lxml numpy fastembed && python -c "from edgar_analyst.textdb import FastEmbedder; FastEmbedder()"
+    startCommand: python -m edgar_analyst serve --no-rerank
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: FASTEMBED_CACHE_PATH
+        value: /opt/render/project/src/models
+      - key: PYTHONPATH
+        value: src
+      - key: GROQ_API_KEY
+        sync: false
