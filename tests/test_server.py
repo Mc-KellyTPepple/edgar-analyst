@@ -111,6 +111,16 @@ class HttpTests(unittest.TestCase):
         self.assertIn(b"EDGAR Analyst", body)
         self.assertEqual(self.call("/nope")[0], 404)
 
+    def test_cors_headers_and_preflight(self):
+        req = urllib.request.Request(self.url + "/health", headers={"Origin": "https://example.vercel.app"})
+        with urllib.request.urlopen(req) as r:
+            self.assertEqual(r.headers["Access-Control-Allow-Origin"], "*")
+        pre = urllib.request.Request(self.url + "/ask", method="OPTIONS", headers={"Origin": "https://example.vercel.app", "Access-Control-Request-Method": "POST"})
+        with urllib.request.urlopen(pre) as r:
+            self.assertEqual(r.status, 204)
+            self.assertIn("POST", r.headers["Access-Control-Allow-Methods"])
+            self.assertIn("Content-Type", r.headers["Access-Control-Allow-Headers"])
+
     def test_ask_success_shape(self):
         code, body = self.call("/ask", {"question": "What is 6*7?"}, {"X-Forwarded-For": "9.9.9.1"})
         j = json.loads(body)

@@ -37,6 +37,9 @@ const j=await r.json();o.textContent=r.ok?(j.final_answer+'\\n\\nSources: '+(j.s
 s.textContent=r.ok?j.model+', '+j.seconds+'s':''}catch(e){o.textContent='Request failed: '+e}}</script>"""
 
 
+ALLOWED_ORIGIN = os.environ.get("ALLOWED_ORIGIN", "*")
+
+
 class Limits:
     def __init__(self, per_ip_per_hour=10, daily_cap=150, clock=time.time):
         self.per_ip, self.daily_cap, self.clock = per_ip_per_hour, daily_cap, clock
@@ -100,8 +103,23 @@ def make_handler(app: App):
             self.send_header("Content-Type", ctype + ("; charset=utf-8" if ctype.startswith("text") else ""))
             self.send_header("Content-Length", str(len(body)))
             self.send_header("X-Content-Type-Options", "nosniff")
+            self._cors()
             self.end_headers()
             self.wfile.write(body)
+
+        def _cors(self) -> None:
+            # the portfolio frontend lives on another origin (Vercel); the API is public and rate limited per IP
+            self.send_header("Access-Control-Allow-Origin", ALLOWED_ORIGIN)
+            self.send_header("Vary", "Origin")
+
+        def do_OPTIONS(self):  # noqa: N802   CORS preflight
+            self.send_response(204)
+            self._cors()
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
+            self.send_header("Access-Control-Max-Age", "86400")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
 
         def _json(self, code: int, obj: dict) -> None:
             self._send(code, json.dumps(obj).encode())
