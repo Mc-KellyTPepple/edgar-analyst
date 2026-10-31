@@ -72,8 +72,9 @@ def build_db(path: Path, companies: list[tuple[int, str, str]], facts_by_cik: di
         conn.close()
 
 
-def open_readonly(path: Path) -> sqlite3.Connection:
-    conn = sqlite3.connect(f"file:{Path(path).resolve()}?mode=ro", uri=True)
+def open_readonly(path: Path, shared: bool = False) -> sqlite3.Connection:
+    """Read-only connection. shared=True lets another thread use it (the HTTP server serialises agent runs with a lock)."""
+    conn = sqlite3.connect(f"file:{Path(path).resolve()}?mode=ro", uri=True, check_same_thread=not shared)
     conn.row_factory = sqlite3.Row
     return conn
 

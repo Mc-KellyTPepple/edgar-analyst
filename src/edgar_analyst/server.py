@@ -85,7 +85,8 @@ class App:
         except LLMError as exc:
             msg = "The model provider is busy or out of free quota right now. Try again later." if "quota" in str(exc).lower() or "budget" in str(exc).lower() else "The model provider returned an error. Try again."
             return 503, {"error": msg}
-        except Exception:   # network failure, bad key, anything unexpected: never leak internals or drop the connection
+        except Exception as exc:   # network failure, bad key, anything unexpected: never leak internals or drop the connection
+            print(f"ask failed: {type(exc).__name__}: {str(exc)[:200]}", flush=True)   # type and message only, never the question
             return 502, {"error": "Could not reach the model provider. Try again later."}
         text = run["text"] or ""
         return 200, {"answer": text, "final_answer": extract_final(text), "sources": sorted(cited_accessions(text)),

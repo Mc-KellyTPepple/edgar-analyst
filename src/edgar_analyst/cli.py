@@ -69,7 +69,7 @@ def cmd_serve(args) -> None:
     llm = LLM(os.environ.get("GROQ_API_KEY"), models=_models(args.models), cache_dir=config.LLM_CACHE_DIR,
               ledger_path=Path(os.environ.get("LEDGER_PATH", "/tmp/groq_ledger.json")),
               max_requests=None)
-    conn = open_readonly(config.DB_PATH)
+    conn = open_readonly(config.DB_PATH, shared=True)
     index = TextIndex(config.TEXT_DB_PATH, None if args.no_dense else try_embedder(), None if args.no_rerank else try_reranker())
     print(f"retrieval mode: {index.mode}, rerank: {'yes' if index.reranker else 'no'}", flush=True)
     search = lambda q, ticker=None, year=None: index.search(q, k=4, ticker=ticker, year=year)  # noqa: E731

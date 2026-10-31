@@ -24,6 +24,44 @@ class Clock:
         return self.t
 
 
+class CrossThreadDbTests(unittest.TestCase):
+    def test_connection_opened_in_main_thread_works_in_request_threads(self):
+        import tempfile
+        from pathlib import Path
+
+        from edgar_analyst.db import open_readonly
+        from .test_facts_db import make_db
+
+        with tempfile.TemporaryDirectory() as tmp:
+            conn = open_readonly(make_db(Path(tmp)), shared=True)
+
+            def runner(llm, question, conn=None, search=None, **_):
+                n = conn.execute("SELECT COUNT(*) FROM financials").fetchone()[0]
+                return {"text": f"FINAL ANSWER: {n}", "model": "fake", "tool_calls": 1}
+
+            out = []
+            app = App(None, conn, None, Limits(), runner=runner)
+            t = threading.Thread(target=lambda: out.append(app.ask("q", "1.1.1.1")))
+            t.start(); t.join()
+            self.assertEqual(out[0][0], 200)
+            conn.close()
+            # and the default (unshared) connection really does refuse other threads, which is what broke the live service
+            conn2 = open_readonly(make_db(Path(tmp) / "x") if False else Path(tmp) / "facts.db")
+            err = []
+            th = threading.Thread(target=lambda: err.append(_try(conn2)))
+            th.start(); th.join()
+            self.assertIn("thread", err[0])
+            conn2.close()
+
+
+def _try(conn):
+    try:
+        conn.execute("SELECT 1")
+        return "ok"
+    except Exception as exc:
+        return str(exc)
+
+
 class LimitsTests(unittest.TestCase):
     def test_per_ip_hourly_limit_and_expiry(self):
         clk = Clock()
