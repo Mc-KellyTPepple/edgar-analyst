@@ -90,21 +90,23 @@ make ingest db questions                             # download data, build the 
 Or run the **Ingest SEC data** workflow in GitHub Actions (set the `SEC_CONTACT`
 repository variable to your email first).
 
+## Live demo
+
+https://edgar-analyst.onrender.com (free Render service: the first visit after idle takes about a minute to wake; runs on a free Groq key with a daily cap, so it may say it is busy).
+
 ## Deploy for free
 
-No paid plan is needed. The service (`python -m edgar_analyst serve`, standard library HTTP) runs in the `Dockerfile` on a free
-[Hugging Face Space](https://huggingface.co/new-space) (Docker SDK, CPU, 16 GB RAM, enough for the local search models) and uses your free Groq key.
-It protects that quota: 10 questions per visitor per hour, 150 per day for the whole service, a 500-character question limit, and cached
+No paid plan is needed. The service (`python -m edgar_analyst serve`, standard library HTTP) runs as a free Render web service (`render.yaml`)
+and uses your free Groq key. (Hugging Face Docker Spaces, the first choice, now require billing; the `Dockerfile` still works on any Docker host.)
+It protects the quota: 10 questions per visitor per hour, 150 per day for the whole service, a 500-character question limit, and cached
 answers cost nothing. When the quota is gone it says so instead of failing.
 
 1. Run the **Build deploy data** workflow once (needs the `SEC_CONTACT` variable). It commits `deploy/data/facts.db` and `text.db` (about 20 MB).
-2. Create a Space (Docker, blank) and add a secret `GROQ_API_KEY` under Settings, Variables and secrets.
-3. Upload the files to the Space: in the Space, Files, Add file, Upload files, and drag in the contents of the Space bundle
-   (`Dockerfile`, `pyproject.toml`, `README.md` taken from `deploy/hf/README.md`, `src/`, `deploy/data/`). The web upload handles the
-   20 MB database through Git LFS automatically; a plain `git push` of it is rejected unless you run `git lfs track "*.db"` first.
-The Space builds the image (a few minutes, mostly model downloads) and serves the UI at its URL; `POST /ask` with `{"question": "..."}` is the API.
-Free Spaces sleep after about 48 hours without visitors and wake on the next request.
-The Docker image and server were not built or run on a real host from the development sandbox (no network there); the server code is covered by tests.
+2. In Render, create a Web Service from the repo (free plan; build and start commands are in `render.yaml`) and add the environment variable `GROQ_API_KEY`.
+3. Render builds (about 1 minute) and serves the UI at its URL; `POST /ask` with `{"question": "..."}` is the API.
+
+The free instance has 512 MB of memory, so it runs hybrid search without the reranker (`--no-rerank`); the evaluation numbers above that include the reranker
+are for the full setup. The Docker image and the memory use under real questions have not been verified end to end on the live service.
 
 ## Roadmap
 
