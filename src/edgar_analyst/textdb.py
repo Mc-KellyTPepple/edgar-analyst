@@ -150,7 +150,15 @@ class TextIndex:
 
     def search(self, query: str, k: int = 4, ticker: str | None = None, year: str | None = None, pool: int = 30) -> list[dict]:
         ticker = ticker.upper() if ticker else None
-        year = str(year) if year else None
+        year = str(year).strip()[:4] if year else None
+        hits = self._search(query, k, ticker, year, pool)
+        if not hits and year:
+            # A year the index has no passages for (or one the model mis-specified) should not read as "the filing says nothing":
+            # fall back to the ticker's other filings; each hit carries its period_end so the caller can see which year it is.
+            hits = self._search(query, k, ticker, None, pool)
+        return hits
+
+    def _search(self, query: str, k: int, ticker, year, pool: int) -> list[dict]:
         ranked: dict[str, float] = {}
         for ranking in (self._bm25(query, ticker, year, pool), self._dense(query, ticker, year, pool)):
             for rank, key in enumerate(ranking):

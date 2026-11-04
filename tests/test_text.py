@@ -121,6 +121,14 @@ class RetrievalTests(unittest.TestCase):
         self.assertEqual(idx.search("", k=3), [])
         self.assertEqual(idx.search("zzzzqqq"), [])
 
+    def test_unknown_year_falls_back_to_ticker(self):
+        build_text_db(self.path, corpus())
+        idx = TextIndex(self.path)
+        hits = idx.search("how many employees", k=3, ticker="ALPH", year=2031)
+        self.assertTrue(hits)
+        self.assertTrue(all(h["ticker"] == "ALPH" for h in hits))
+        self.assertEqual(idx.search("how many employees", k=3, ticker="ALPH", year="2023-12-31")[0]["ticker"], "ALPH")
+
     def test_query_sanitising(self):
         self.assertEqual(_fts_query('what is "AND" NEAR(xy) *'), '"near" OR "xy"')
         self.assertIsNone(_fts_query("the of a"))
