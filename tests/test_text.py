@@ -215,3 +215,28 @@ class FullAgentTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ExcerptTests(unittest.TestCase):
+    """The answer sentence sits far past the first 900 characters of a long chunk; the model must be shown it."""
+
+    def test_answer_sentence_far_into_a_long_passage_is_shown(self):
+        from edgar_analyst.agent import _excerpt
+        filler = " ".join(f"We strive to attract and retain talent through programme number {i} and other initiatives." for i in range(30))
+        text = filler + " As of December 31, 2025, we employed approximately 1,576,000 full-time and part-time employees. Additionally, we use contractors. " + filler
+        self.assertGreater(text.index("1,576,000"), 1500)
+        out = _excerpt(text, "total employees")
+        self.assertIn("1,576,000", out)
+        self.assertLess(len(out), 1300)
+
+    def test_short_passages_and_unmatched_queries_are_unchanged_or_start_of_text(self):
+        from edgar_analyst.agent import _excerpt
+        self.assertEqual(_excerpt("Short passage about employees.", "employees"), "Short passage about employees.")
+        long = "Alpha beta gamma. " * 200
+        self.assertEqual(_excerpt(long, "zzzz qqqq"), long[:900])
+
+    def test_format_passages_passes_the_query_through(self):
+        from edgar_analyst.agent import _format_passages
+        text = ("Filler sentence about nothing. " * 60) + "Alphabet had 183,323 employees. " + ("More filler text here. " * 60)
+        out = _format_passages([{"ticker": "GOOGL", "period_end": "2024-12-31", "item": "1", "accession": "0001652044-25-000014", "text": text}], "employees")
+        self.assertIn("183,323", out)

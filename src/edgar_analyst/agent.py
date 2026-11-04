@@ -20,7 +20,7 @@ from .facts import METRICS
 from .grading import is_abstain
 from .questions import RATIOS
 
-PROMPT_VERSION = "v8"   # v2: first full run; v3: no refusal before the data was checked; v4: financial_ratio tool; v5: refusals must be grounded in a tool result
+PROMPT_VERSION = "v9"   # v9: search_filings shows the passage excerpt that matches the query, not the first 900 characters; v2: first full run; v3: no refusal before the data was checked; v4: financial_ratio tool; v5: refusals must be grounded in a tool result
 METRIC_NAMES = ", ".join(METRICS)
 
 _RULES = f"""You answer questions about US public companies from a read-only SQLite database of annual (10-K) figures{{extra}}.
@@ -205,10 +205,56 @@ def _growth(conn, ticker: str, metric: str, from_date: str, to_date: str, window
             f"{picked[1]} ({v2:g}), USD millions. accessions: {a1}, {a2}")
 
 
-def _format_passages(hits: list[dict]) -> str:
+_SENTENCE = re.compile(r"(?<=[.!?])\s+(?=[A-Z\u2022$(\d])")
+_WORD = re.compile(r"[a-z]{3,}")
+_BIG_NUMBER = re.compile(r"\d{1,3}(?:,\d{3})+|\d{4,}")
+
+
+def _excerpt(text: str, query: str, width: int = 900) -> str:
+    """The part of a passage most relevant to the query, not just its first `width` characters.
+
+    A passage is a whole section chunk; the sentence that answers the question (for example the employee count) is
+    often far past the first 900 characters. Cutting there made the model answer from memory instead of the filing.
+    """
+    if len(text) <= width:
+        return text
+    terms = {w[:5] for w in _WORD.findall(query.lower())} - {"the", "and", "for", "had", "were", "was", "have", "that", "with", "total"}
+    sentences = _SENTENCE.split(text)
+
+    def score(sentence: str) -> float:
+        low = sentence.lower()
+        hit = sum(1 for t in terms if t in low)
+        return hit + (0.5 if hit and _BIG_NUMBER.search(sentence) else 0)
+
+    scores = [score(x) for x in sentences]
+    if not any(scores):
+        return text[:width]
+    best = max(range(len(sentences)), key=lambda i: (scores[i], -i))
+    lo = hi = best
+    size = len(sentences[best])
+    while size < width:   # grow around the best sentence, preferring the side with the more relevant neighbour
+        left = scores[lo - 1] if lo > 0 else -1
+        right = scores[hi + 1] if hi + 1 < len(sentences) else -1
+        if left < 0 and right < 0:
+            break
+        if right >= left:
+            if size + len(sentences[hi + 1]) + 1 > width:
+                break
+            hi += 1
+            size += len(sentences[hi]) + 1
+        else:
+            if size + len(sentences[lo - 1]) + 1 > width:
+                break
+            lo -= 1
+            size += len(sentences[lo]) + 1
+    out = " ".join(sentences[lo:hi + 1])
+    return ("... " if lo > 0 else "") + out[: width + 200] + (" ..." if hi + 1 < len(sentences) else "")
+
+
+def _format_passages(hits: list[dict], query: str = "") -> str:
     if not hits:
         return "no passages found"
-    return "\n\n".join(f"[{h['ticker']} fiscal year ended {h['period_end']}, Item {h['item']}, accession {h['accession']}]\n{h['text'][:900]}"
+    return "\n\n".join(f"[{h['ticker']} fiscal year ended {h['period_end']}, Item {h['item']}, accession {h['accession']}]\n{_excerpt(h['text'], query)}"
                         for h in hits)
 
 
@@ -228,7 +274,7 @@ def run_tool(name: str, args: dict, conn, search=None, retrieved: list | None = 
             hits = search(str(args.get("query", "")), ticker=args.get("ticker") or None, year=args.get("year") or None)
             if retrieved is not None:
                 retrieved.extend(h["key"] for h in hits)
-            return _format_passages(hits)
+            return _format_passages(hits, str(args.get("query", "")))
         return f"error: unknown tool {name}"
     except (QueryError, ValueError, ZeroDivisionError, SyntaxError, TypeError) as exc:
         return f"error: {exc}"
