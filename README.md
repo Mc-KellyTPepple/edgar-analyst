@@ -130,7 +130,7 @@ graded automatically. Raw responses are in `evals/results/`; the first-run resul
 |---|---|---|---|---|---|---|---|---|---|---|
 | closed book (model memory) | 10.0% | 8.3% | 40.0% | - | 17.3% | 71.4% | 37.3% | n/a | n/a | n/a |
 | facts agent (ratio + lookup + SQL + calculator) | 100% | 100% | 100% | 0.0% | 100% | 100% | 0% | 100% | 100% | n/a |
-| full agent (+ filing search + reranker) | 100% | 100% | 100% | 87.0% | 100% | 100% | 0% | 99.8% | 100% | 100% |
+| full agent (+ filing search + reranker) | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 99.8% | 100% | 100% |
 
 What the numbers say:
 
@@ -154,10 +154,13 @@ What the numbers say:
   said string, and Groq rejected the whole request as `tool_use_failed`. Fixes: a `financial_ratio(ticker, ratio, as_of)` tool that picks each
   company's nearest fiscal year, divides, and returns the accessions; recovery from empty replies; a permissive schema; a clearer
   out-of-steps instruction; tool-call traces stored with every answer so failures can be diagnosed.
-- **Filing text: 82.6% to 87.0%** (20 of 23) after adding a local cross-encoder reranker to the search, a grader fix (it was reading an accession
-  number as the answer), and a prompt telling the model to use the figure matching the question's exact wording without rounding. The right passage is now
-  retrieved for every question (100%, was 91%). The 3 remaining misses are the model rounding or choosing a wrong number from a retrieved passage
-  (Amazon 1,540,000 for 1,576,000 and for 1,556,000; Google 190,000 for 183,323), so the next lever is answer extraction, not search.
+- **Filing text: 82.6% to 100%** (23 of 23, tuned-on set). Steps: a local cross-encoder reranker in the search, a grader fix (it was reading an accession
+  number as the answer), a prompt telling the model to use the figure matching the question's exact wording without rounding, and (prompt v9) a
+  search tool that shows the sentence matching the query instead of the first 900 characters of the passage. That last one fixed the Amazon and Google
+  misses, where the right number sat further down the passage than the model was shown. The final miss (Apple FY2023) was an evaluation bug, not a model
+  error: the CI job rebuilt its index from "the latest 3 10-Ks", and Apple's new FY2026 filing pushed FY2023 out, so the question became unanswerable.
+  The eval now uses the same committed `deploy/data/text.db` the hosted service serves. Search also now falls back to the company's other filings when
+  a year filter finds nothing. These 23 questions were used to find the fixes, so treat 100% as a tuned-on number; the held-out sets below contain no text questions.
 - Tiers 1-3 are now 100% on the tuned set after several fix rounds, which is why the held-out results below matter more.
 
 **Held-out check.** The 187 questions above were used to find and fix failures, so their scores are tuned-on numbers. To measure
