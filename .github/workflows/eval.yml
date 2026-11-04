@@ -100,11 +100,12 @@ jobs:
             [ -f evals/heldout2_questions.jsonl ] || python -m edgar_analyst gen-questions --seed 12 \
               --out evals/heldout2_questions.jsonl --exclude evals/questions.jsonl evals/heldout_questions.jsonl --sizes 40,60,50,0
           fi
-      - name: Build text index (full_agent only)
+      - name: Text retrieval dependencies (full_agent only)
+        # The text index is the committed deploy/data/text.db, the same one the hosted service serves. It is NOT rebuilt here:
+        # rebuilding takes "the latest 3 10-Ks", so once a company files a new one the oldest year drops out and the committed
+        # questions about it become unanswerable (this cost the Apple FY2023 question).
         if: steps.pending.outputs.n != '0' && (inputs.system == 'full_agent' || github.event_name == 'schedule')
-        run: |
-          pip install fastembed
-          python -m edgar_analyst ingest-text
+        run: pip install fastembed
       - name: Run evaluation
         if: steps.pending.outputs.n != '0'
         run: |
