@@ -1,0 +1,1 @@
+{"message": {"role": "assistant", "tool_calls": [{"function": {"arguments": "{\"query\":\"total employees\",\"ticker\":\"NVDA\",\"year\":2025}", "name": "search_filings"}, "id": "fc_141e228d-d1e5-4a59-82e5-bebe50a691b5", "type": "function"}]}, "model": "openai/gpt-oss-120b", "usage": {"completion_tokens": 54, "prompt_tokens": 1553}}
