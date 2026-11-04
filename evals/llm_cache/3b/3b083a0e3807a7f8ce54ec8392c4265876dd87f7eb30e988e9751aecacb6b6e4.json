@@ -1,0 +1,1 @@
+{"message": {"role": "assistant", "tool_calls": [{"function": {"arguments": "{\"query\":\"As of September 30, 2023, the Company had\",\"ticker\":\"AAPL\"}", "name": "search_filings"}, "id": "fc_879ca1ad-905c-492b-8c1b-b068e9d9146c", "type": "function"}]}, "model": "openai/gpt-oss-120b", "usage": {"completion_tokens": 63, "prompt_tokens": 2365}}
