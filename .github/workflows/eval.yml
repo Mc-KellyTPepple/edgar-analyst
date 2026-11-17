@@ -1,6 +1,6 @@
 name: Evaluate on Groq
 
-# Runs the evaluation questions through Groq's free tier, grades them, and commits the
+# Runs the evaluation questions through Groq, grades them, and commits the
 # results, the response cache and the daily request ledger back to the repo.
 #
 # Runs are resumable: finished questions are skipped, so when a daily quota runs out the
@@ -24,7 +24,7 @@ on:
         options: [facts_agent, full_agent, closed_book]
         default: facts_agent
       max_requests:
-        description: "Max Groq requests this run (free-tier daily limits apply)"
+        description: "Max Groq requests this run (daily limits apply)"
         default: "400"
       redo_tiers:
         description: "Archive and re-run whole tiers, e.g. 3 (empty = none)"

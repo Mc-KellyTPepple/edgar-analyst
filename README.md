@@ -47,9 +47,9 @@ choices by ticker or company name, and refusals on unanswerable questions.
 Known gaps: the corpus is 10 companies for now, and companies that don't tag R&D expense the
 standard way (for example Amazon) have no R&D-based questions.
 
-## Running on Groq's free tier
+## Running on Groq
 
-The model calls use [Groq](https://console.groq.com) and the code is built around its free-tier limits
+The model calls use [Groq](https://console.groq.com) and the code is built around its rate limits
 (requests and tokens per minute, requests per day, per model):
 
 - **Rate limiter**: a sliding 60-second window over requests and tokens per model, at 90% of the limit,
@@ -92,20 +92,20 @@ repository variable to your email first).
 
 ## Live demo
 
-https://edgar-analyst.onrender.com (free Render service: the first visit after idle takes about a minute to wake; runs on a free Groq key with a daily cap, so it may say it is busy).
+https://edgar-analyst.onrender.com (on Render: the first visit after idle takes about a minute to wake; it runs on a Groq key with a daily cap, so it may say it is busy).
 
-## Deploy for free
+## Deploy
 
-No paid plan is needed. The service (`python -m edgar_analyst serve`, standard library HTTP) runs as a free Render web service (`render.yaml`)
-and uses your free Groq key. (Hugging Face Docker Spaces, the first choice, now require billing; the `Dockerfile` still works on any Docker host.)
+The service (`python -m edgar_analyst serve`, standard library HTTP) runs as a Render web service (`render.yaml`)
+and uses your Groq key. (Hugging Face Docker Spaces were the first choice; the `Dockerfile` still works on any Docker host.)
 It protects the quota: 10 questions per visitor per hour, 150 per day for the whole service, a 500-character question limit, and cached
 answers cost nothing. When the quota is gone it says so instead of failing.
 
 1. Run the **Build deploy data** workflow once (needs the `SEC_CONTACT` variable). It commits `deploy/data/facts.db` and `text.db` (about 20 MB).
-2. In Render, create a Web Service from the repo (free plan; build and start commands are in `render.yaml`) and add the environment variable `GROQ_API_KEY`.
+2. In Render, create a Web Service from the repo (build and start commands are in `render.yaml`) and add the environment variable `GROQ_API_KEY`.
 3. Render builds (about 1 minute) and serves the UI at its URL; `POST /ask` with `{"question": "..."}` is the API.
 
-The free instance has 512 MB of memory, so it runs hybrid search without the reranker (`--no-rerank`); the evaluation numbers above that include the reranker
+The instance has 512 MB of memory, so it runs hybrid search without the reranker (`--no-rerank`); the evaluation numbers above that include the reranker
 are for the full setup. The Docker image and the memory use under real questions have not been verified end to end on the live service.
 
 ## Roadmap
@@ -116,7 +116,7 @@ are for the full setup. The Docker image and the memory use under real questions
 - [x] Week 2: third tool (text search over filing sections) added to the agent (`full_agent`)
 - [x] Week 3: full evaluation runs (closed book vs facts agent vs full agent) and a quality gate in CI (on stored results)
 - [ ] Next: a clean single-version 120b-only rerun of all tiers, then reranking and broader text questions
-- [x] Week 4 (part): Docker image and HTTP service built for free hosting (Hugging Face Space); deployment steps below
+- [x] Week 4 (part): Docker image and HTTP service built for small-instance hosting (Hugging Face Space); deployment steps below
 - [ ] Week 4: tracing and cost dashboard
 - [ ] Week 5-6: load test, write-up with failure cases, demo video
 

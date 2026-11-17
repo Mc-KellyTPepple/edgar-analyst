@@ -4,7 +4,7 @@
 * facts_agent: the model plans, queries the facts database with read-only SQL and does
   arithmetic with a calculator, then cites the filings it used.
 
-Prompts are kept short on purpose: on Groq's free tier, tokens per minute is the
+Prompts are kept short on purpose: on Groq, tokens per minute is the
 binding limit.
 """
 from __future__ import annotations

@@ -140,7 +140,7 @@ class HttpTests(unittest.TestCase):
     def test_provider_quota_error_is_friendly_503(self):
         code, body = self.call("/ask", {"question": "boom"}, {"X-Forwarded-For": "9.9.9.3"})
         self.assertEqual(code, 503)
-        self.assertIn("out of free quota", json.loads(body)["error"])
+        self.assertIn("out of quota", json.loads(body)["error"])
         self.assertNotIn("chain", json.loads(body)["error"])   # no internals leaked
 
     def test_unexpected_errors_do_not_leak(self):

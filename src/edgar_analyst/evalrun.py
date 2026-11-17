@@ -1,6 +1,6 @@
 """Run a system over the evaluation questions, grade it, and summarize.
 
-Runs are resumable: finished question ids are skipped, so a free-tier evaluation can
+Runs are resumable: finished question ids are skipped, so an evaluation can
 be spread across several days or several workflow runs.
 """
 from __future__ import annotations

@@ -1,4 +1,4 @@
-# Free hosting on Render (no card): a Python web service that sleeps after 15 idle minutes and wakes on the next request.
+# Hosting on Render: a Python web service that sleeps after 15 idle minutes and wakes on the next request.
 # Add GROQ_API_KEY in the Render dashboard (Environment); it is not stored here.
 services:
   - type: web

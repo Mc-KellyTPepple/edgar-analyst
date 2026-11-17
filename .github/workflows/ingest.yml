@@ -1,6 +1,6 @@
 name: Ingest SEC data
 
-# Downloads filings data from SEC EDGAR (free, but requires a declared contact),
+# Downloads filings data from SEC EDGAR (public, but requires a declared contact),
 # builds the facts database, regenerates the evaluation questions and commits them.
 #
 # One-time setup: add a repository VARIABLE named SEC_CONTACT with your email

@@ -1,18 +1,18 @@
-"""Groq client built for the free tier.
+"""Groq client built for tight rate limits.
 
-The free tier is generous in quality but tight in volume (per-model limits on
+The quota is generous in quality but tight in volume (per-model limits on
 requests and tokens, per minute and per day). This client is designed around that:
 
 * Rate limiter: stays under each model's requests/minute and tokens/minute.
 * Fallback chain: when a model's daily quota runs out, the next model takes over.
 * Response cache: every response is stored on disk keyed by the exact request, so
   re-running an evaluation costs nothing. `replay` mode forbids network calls, which
-  makes CI deterministic and free.
+  makes CI deterministic and cheap.
 * Daily ledger: request counts per model and day, committed with the results, so runs
   on different days (or machines) respect the same budget.
 * Retries honour Groq's `retry-after` header.
 
-Limits below are the free-tier values at the time of writing and can change;
+Limits below are the values at the time of writing and can change;
 check https://console.groq.com/settings/limits and override with `limits=`.
 """
 from __future__ import annotations

@@ -1,4 +1,4 @@
-# Free-tier friendly image: CPU only, no GPU, models baked in so a cold start does not download anything.
+# Small-instance friendly image: CPU only, no GPU, models baked in so a cold start does not download anything.
 FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 PYTHONPATH=/app/src FASTEMBED_CACHE_PATH=/app/models PORT=7860

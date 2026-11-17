@@ -4,7 +4,7 @@
   GET  /health    liveness plus index/limit status
   POST /ask       {"question": "..."} -> {"answer", "final_answer", "sources", "model", "tool_calls", "seconds"}
 
-It runs on a free host with a free Groq key, so it protects the quota: per-IP rate limit, a daily cap on
+It runs on a small host with a rate-limited Groq key, so it protects the quota: per-IP rate limit, a daily cap on
 model calls for the whole service, a question length limit, and the on-disk response cache (repeat
 questions cost nothing).
 """
@@ -30,7 +30,7 @@ button{font:inherit;padding:.4rem 1rem;margin-top:.5rem}pre{white-space:pre-wrap
 <p>Ask about the 10-K filings of NVDA, AMD, INTC, MSFT, AAPL, GOOGL, AMZN, META, TSLA, ORCL. Answers come from SEC data and cite filings.</p>
 <textarea id=q placeholder="What was NVIDIA's net profit margin for the fiscal year ended January 28, 2024?"></textarea><br>
 <button id=b>Ask</button> <small id=s></small><pre id=o hidden></pre>
-<p><small>Free demo on a free Groq key: it may be slow or say it is busy. Not investment advice.</small></p>
+<p><small>This demo runs on a limited Groq key: it may be slow or say it is busy. Not investment advice.</small></p>
 <script>b.onclick=async()=>{o.hidden=false;o.textContent='Working... (can take up to a minute)';s.textContent='';
 try{const r=await fetch('/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({question:q.value})});
 const j=await r.json();o.textContent=r.ok?(j.final_answer+'\\n\\nSources: '+(j.sources.join(', ')||'none')+'\\n\\n'+j.answer):(j.error||'error');
@@ -55,7 +55,7 @@ class Limits:
             if today != self.day:
                 self.day, self.count = today, 0
             if self.count >= self.daily_cap:
-                return "The daily free quota for this demo is used up. Please try again tomorrow."
+                return "The daily quota for this demo is used up. Please try again tomorrow."
             q = self.hits[ip]
             while q and now - q[0] > 3600:
                 q.popleft()
@@ -86,7 +86,7 @@ class App:
             with self.lock:
                 run = self.runner(self.llm, question, conn=self.conn, search=self.search)
         except LLMError as exc:
-            msg = "The model provider is busy or out of free quota right now. Try again later." if "quota" in str(exc).lower() or "budget" in str(exc).lower() else "The model provider returned an error. Try again."
+            msg = "The model provider is busy or out of quota right now. Try again later." if "quota" in str(exc).lower() or "budget" in str(exc).lower() else "The model provider returned an error. Try again."
             return 503, {"error": msg}
         except Exception as exc:   # network failure, bad key, anything unexpected: never leak internals or drop the connection
             print(f"ask failed: {type(exc).__name__}: {str(exc)[:200]}", flush=True)   # type and message only, never the question
