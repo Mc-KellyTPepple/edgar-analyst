@@ -156,8 +156,14 @@ def make_handler(app: App):
     return Handler
 
 
+class Server(ThreadingHTTPServer):
+    """The default listen backlog is 5, which resets connections when a burst of visitors arrives together (found by scripts/loadtest.py)."""
+    request_queue_size = 128
+    daemon_threads = True
+
+
 def serve(app: App, host: str = "0.0.0.0", port: int | None = None) -> None:
     port = port or int(os.environ.get("PORT", "7860"))
-    srv = ThreadingHTTPServer((host, port), make_handler(app))
+    srv = Server((host, port), make_handler(app))
     print(f"listening on {host}:{port}", flush=True)
     srv.serve_forever()

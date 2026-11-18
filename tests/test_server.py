@@ -156,3 +156,10 @@ class HttpTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ListenBacklogTest(unittest.TestCase):
+    def test_backlog_is_larger_than_the_stdlib_default(self):
+        from edgar_analyst.server import Server
+        self.assertGreaterEqual(Server.request_queue_size, 64)
+        self.assertTrue(Server.daemon_threads)

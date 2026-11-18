@@ -108,6 +108,14 @@ answers cost nothing. When the quota is gone it says so instead of failing.
 The instance has 512 MB of memory, so it runs hybrid search without the reranker (`--no-rerank`); the evaluation numbers above that include the reranker
 are for the full setup. The Docker image and the memory use under real questions have not been verified end to end on the live service.
 
+## Operations
+
+- **Cost and latency** (`evals/results/OPS.md`): about 2,100 to 2,750 tokens and 1.5 to 1.9 tool calls per agent question; median latency 2 to 6 s.
+  The 95th percentile (about 59 s) comes from waiting out the provider's per-minute limits during the evaluation, not from the agent itself.
+- **Load test** (`evals/results/LOADTEST.md`): a real HTTP server with the model stubbed, so it measures the service layer only and never touches Groq or the live site.
+  It showed that the per-visitor and daily limits hold under a burst, that one question runs at a time (twelve simultaneous visitors queue behind each other), and it
+  exposed a bug: the default listen queue of 5 reset connections when 20 visitors arrived together (194 of 200 requests succeeded). The queue is now 128 and the run is 200 of 200.
+
 ## Roadmap
 
 - [x] Week 1: data pipeline (verified on live SEC data), facts DB, question generator and grader
@@ -117,8 +125,9 @@ are for the full setup. The Docker image and the memory use under real questions
 - [x] Week 3: full evaluation runs (closed book vs facts agent vs full agent) and a quality gate in CI (on stored results)
 - [ ] Next: a clean single-version 120b-only rerun of all tiers, then reranking and broader text questions
 - [x] Week 4 (part): Docker image and HTTP service built for small-instance hosting (Hugging Face Space); deployment steps below
-- [ ] Week 4: tracing and cost dashboard
-- [ ] Week 5-6: load test, write-up with failure cases, demo video
+- [x] Week 4: cost and latency report from the stored records (`scripts/ops_report.py` writes `evals/results/OPS.md`); per-answer tool traces were already stored
+- [x] Week 5: load test of the service layer (`scripts/loadtest.py`, results in `evals/results/LOADTEST.md`); it found and fixed a connection-reset bug under bursts
+- [ ] Week 6: demo video (needs a screen recording of the live demo)
 
 ## Results
 
