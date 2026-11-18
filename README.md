@@ -195,7 +195,7 @@ was run once on the fixed agents (prompt v6, no errors):
 The fixes generalised: the facts agent went from 93.9% on set 1 to 100% on a set it had never seen, and the full agent stayed at 100%.
 Limits: 89 questions still means the true rate could be a few points lower (100% on 89 is consistent with roughly 96-100%); both held-out sets use the same
 question templates and the same 10 companies as the tuned set, so this shows the agents handle new instances of these question types, not new
-kinds of question; they contain no refusal or filing-text questions; and about a third of the full agent's answers came from the smaller `gpt-oss-20b`
+kinds of question; they contain no refusal or filing-text questions; and about a third of the full agent's answers came from `gpt-oss-20b` (the smaller model, versus the larger `gpt-oss-120b`)
 model. Refusals and filing-text questions are only covered by the tuned set (100% refusals, 82.6% filing text).
 
 Caveats: single run, no confidence intervals; every question now has an answer (no errors). The last 3 that Groq kept rejecting were completed by resampling malformed tool calls and raising the step budget from 6 to 8, so a few answers used a slightly different setup than the rest. Questions about figures come from the same database the agent queries, so tiers 1-3
